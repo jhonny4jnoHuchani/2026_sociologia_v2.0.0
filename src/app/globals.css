@@ -1,0 +1,61 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* ── Colores estáticos que NO cambian ── */
+  --color-lightgrey:     #547593;
+
+  /* ── Colores dinámicos — valor inicial fallback ── */
+  --color-primary:       var(--color-primario,       #2f73f2);
+  --color-secondary:     var(--color-secondary-d,    #f5f9ff);
+  --color-darkmode:      var(--color-darkmode-d,     #081738);
+  --color-darklight:     var(--color-darklight-d,    #000f30);
+  --color-darkblue:      var(--color-darkblue-d,     #102d47);
+  --color-lightdarkblue: var(--color-lightdarkblue-d,#112145);
+
+  --spacing-45:    45%;
+  --breakpoint-xs: 420px;
+}
+
+@layer utilities {
+  .container {
+    @apply max-w-7xl mx-auto w-full px-4;
+  }
+
+  .nav-link {
+    @apply text-black dark:text-white;
+  }
+
+  .nav-link-hover {
+    @apply transition-colors duration-200;
+  }
+
+  .nav-link-hover:hover {
+    color: var(--color-primario);
+  }
+}
+
+@layer base {
+  html    { scroll-behavior: smooth; }
+  section { @apply py-14; }
+
+  h1 { @apply capitalize md:text-6xl text-5xl font-bold xl:leading-tight leading-tight;
+       color: var(--color-darkblue-d, #102d47); }
+  h2 { @apply capitalize md:text-5xl text-4xl font-bold;
+       color: var(--color-darkblue-d, #102d47); }
+  h3 { @apply capitalize text-3xl font-normal;
+       color: var(--color-darkblue-d, #102d47); }
+  h4 { @apply capitalize text-2xl font-medium;
+       color: var(--color-darkblue-d, #102d47); }
+  h5 { @apply capitalize text-xl font-medium;
+       color: var(--color-darkblue-d, #102d47); }
+  h6 { @apply capitalize text-lg font-medium;
+       color: var(--color-darkblue-d, #102d47); }
+  p  { @apply capitalize text-base;
+       color: var(--color-grey-d, #547593); }
+
+  .dark h1, .dark h2, .dark h3,
+  .dark h4, .dark h5, .dark h6 { color: #ffffff; }
+  .dark p                       { color: var(--color-grey-d, #547593); }
+}
