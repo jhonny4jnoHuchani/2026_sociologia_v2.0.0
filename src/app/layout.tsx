@@ -14,8 +14,8 @@ const DMSans = DM_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'Ingeniería Ambiental',
-  description: 'Ingeniería Ambiental',
+  title: 'Sociología',
+  description: 'Sociología',
 }
 
 export default function RootLayout({

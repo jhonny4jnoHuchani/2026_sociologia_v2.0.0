@@ -37,6 +37,12 @@
 }
 
 @layer base {
+  :root {
+    --color-bg-wave: var(--color-secondary-d, #f5f9ff);
+  }
+  .dark {
+    --color-bg-wave: var(--color-primario, #081738);
+  }
   html    { scroll-behavior: smooth; }
   section { @apply py-14; }
 

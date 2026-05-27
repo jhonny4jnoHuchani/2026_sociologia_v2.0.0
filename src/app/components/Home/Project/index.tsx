@@ -7,8 +7,9 @@ import 'slick-carousel/slick/slick.css'
 import 'slick-carousel/slick/slick-theme.css'
 import { useEffect, useState } from 'react'
 import ProjectSkeleton from '../../Skeleton/Project'
-import { getRecursos } from '@/services/ambientalService'
+import { getRecursos, getInstitucionPrincipal } from '@/services/ambientalService'
 import { LinkExternoType } from '@/app/types/ambiental.types'
+import { InstitucionType } from '@/app/types/ambiental.types'
 
 const LinkCard = ({ item }: { item: LinkExternoType }) => (
   <div className='p-1'>
@@ -18,13 +19,13 @@ const LinkCard = ({ item }: { item: LinkExternoType }) => (
       rel='noopener noreferrer'
       className='block p-5 bg-white dark:bg-lightdarkblue m-3 rounded-lg hover:shadow-lg transition-shadow duration-300'
     >
-      <div className='w-full mb-4'>
+      <div className='w-full mb-4 h-[160px] overflow-hidden rounded-lg'>
         <Image
           src={item.imagen}
           alt={item.nombre}
           width={234}
-          height={236}
-          className='w-full rounded-lg object-cover'
+          height={160}
+          className='w-full h-full object-cover'
         />
       </div>
       <div className='flex items-center gap-2'>
@@ -46,14 +47,19 @@ const LinkCard = ({ item }: { item: LinkExternoType }) => (
 )
 
 const Project = () => {
-  const [links, setLinks]   = useState<LinkExternoType[]>([])
+  const [links, setLinks] = useState<LinkExternoType[]>([])
   const [loading, setLoading] = useState(true)
+  const [institucion, setInstitucion] = useState<InstitucionType | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const data = await getRecursos()
+        const [data, principalData] = await Promise.all([
+          getRecursos(),
+          getInstitucionPrincipal(),
+        ])
         setLinks(data.linksExternoInterno.filter((l: LinkExternoType) => l.estado === 1))
+        setInstitucion(principalData.Descripcion)
       } catch (error) {
         console.error('Error fetching links:', error)
       } finally {
@@ -67,7 +73,7 @@ const Project = () => {
     dots: true,
     arrows: false,
     infinite: true,
-    slidesToShow: 4,
+    slidesToShow: 3,
     slidesToScroll: 1,
     autoplay: true,
     speed: 500,
@@ -90,14 +96,15 @@ const Project = () => {
           </div>
           <div className='md:max-w-45 mx-auto mb-8'>
             <p className='text-xl font-normal text-center leading-8'>
-              Plataformas y servicios de la carrera de Ingeniería Ambiental.
+              Plataformas y servicios de la carrera de{' '}
+              {institucion?.institucion_nombre ?? 'la carrera'}.
             </p>
           </div>
 
           <div className='relative z-20'>
             <Slider {...settings}>
               {loading
-                ? Array.from({ length: 4 }).map((_, i) => (
+                ? Array.from({ length: 3 }).map((_, i) => (
                     <ProjectSkeleton key={i} />
                   ))
                 : links.map((item) => (
