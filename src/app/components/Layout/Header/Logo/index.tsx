@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import Image from 'next/image'
@@ -6,18 +6,36 @@ import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { getInstitucionPrincipal } from '@/services/ambientalService'
 import { InstitucionType } from '@/app/types/ambiental.types'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 const Logo = () => {
   const [institucion, setInstitucion] = useState<InstitucionType | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getInstitucionPrincipal()
-      .then(data => setInstitucion(data.Descripcion))
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
+    const controller = new AbortController()
+    let isMounted = true
 
+    const fetchData = async () => {
+      try {
+        const data = await getInstitucionPrincipal(controller.signal)
+        if (!isMounted) return
+        setInstitucion(data.Descripcion)
+      } catch (error) {
+        if (isCancelledError(error)) return
+        console.error(error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
+  }, [])
   const primaryColor = institucion?.colorinstitucion?.[0]?.color_primario ?? '#4F8D40'
 
   return (
@@ -76,7 +94,7 @@ const Logo = () => {
                 className='text-sm font-semibold leading-tight'
                 style={{ color: primaryColor }}
               >
-                {institucion?.institucion_nombre ?? 'Ingeniería Ambiental'}
+                {institucion?.institucion_nombre ?? 'Sociología'}
               </p>
               <p className='text-xs text-lightgrey leading-tight'>
                 Universidad Pública de El Alto

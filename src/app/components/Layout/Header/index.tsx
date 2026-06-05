@@ -14,6 +14,7 @@ import { InstitucionType } from '@/app/types/ambiental.types'
 import HeaderLink from './Navigation/HeaderLink'
 import MobileHeaderLink from './Navigation/MobileHeaderLink'
 import Logo from './Logo'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 const navlinks = [
   { label: 'Inicio', href: '/' },
@@ -85,10 +86,28 @@ const Header: React.FC = () => {
   const isDark = mounted && theme === 'dark'
 
   useEffect(() => {
-    getInstitucionPrincipal()
-      .then(data => setInstitucion(data.Descripcion))
-      .catch(console.error)
-      .finally(() => setLoading(false))
+    const controller = new AbortController()
+    let isMounted = true
+
+    const fetchData = async () => {
+      try {
+        const data = await getInstitucionPrincipal(controller.signal)
+        if (!isMounted) return
+        setInstitucion(data.Descripcion)
+      } catch (error) {
+        if (isCancelledError(error)) return
+        console.error(error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [])
 
   useEffect(() => {

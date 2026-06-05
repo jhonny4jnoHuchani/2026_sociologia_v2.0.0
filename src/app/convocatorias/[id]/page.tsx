@@ -17,6 +17,7 @@ import {
   TipoConvocatoria, formatFechaLarga, isExpired, isActive,
   getTypeStyle, Chip, SectionIn,
 } from '../_shared'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 // ── Partícula decorativa ──────────────────────────────────
 const EnvParticle = ({
@@ -38,23 +39,39 @@ const EnvParticle = ({
 // PÁGINA DETALLE
 // ══════════════════════════════════════════════════════════
 export default function DetalleConvocatoriaPage() {
-  const params                        = useParams()
-  const id                            = Number(params.id)
-  const [item, setItem]               = useState<ConvocatoriaType | null>(null)
-  const [loading, setLoading]         = useState(true)
-  const [notFound, setNotFound]       = useState(false)
+  const params = useParams()
+  const id = Number(params.id)
+  const [item, setItem] = useState<ConvocatoriaType | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
-    getGacetaEventos()
-      .then(data => {
+    const controller = new AbortController()
+    let isMounted = true
+
+    const fetchData = async () => {
+      try {
+        const data = await getGacetaEventos(controller.signal)
+        if (!isMounted) return
+
         const found = data.convocatorias.find((c: ConvocatoriaType) => c.idconvocatorias === id)
         if (found) setItem(found)
         else setNotFound(true)
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [id])
+      } catch (error) {
+        if (isCancelledError(error)) return
+        console.error(error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
 
+    fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
+  }, [id])
   // ── Loading ──
   if (loading) {
     return (
@@ -92,11 +109,11 @@ export default function DetalleConvocatoriaPage() {
     )
   }
 
-  const tipo      = item.tipo_conv_comun?.tipo_conv_comun_titulo as TipoConvocatoria
+  const tipo = item.tipo_conv_comun?.tipo_conv_comun_titulo as TipoConvocatoria
   const typeStyle = getTypeStyle(tipo)
-  const TypeIcon  = typeStyle.icon
-  const expired   = isExpired(item.con_fecha_fin)
-  const active    = isActive(item.con_fecha_inicio, item.con_fecha_fin)
+  const TypeIcon = typeStyle.icon
+  const expired = isExpired(item.con_fecha_fin)
+  const active = isActive(item.con_fecha_inicio, item.con_fecha_fin)
 
   const handleDownload = () => {
     if (!item.con_foto_portada) return
@@ -112,10 +129,10 @@ export default function DetalleConvocatoriaPage() {
     <div className='min-h-screen bg-secondary dark:bg-darkmode overflow-x-hidden relative'>
 
       {/* Partículas */}
-      <EnvParticle icon={Leaf}     x='3%'  y='10%' delay={0}   size={32} />
-      <EnvParticle icon={Wind}     x='88%' y='20%' delay={1}   size={28} />
-      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2}   size={24} />
-      <EnvParticle icon={Leaf}     x='8%'  y='75%' delay={0.5} size={36} />
+      <EnvParticle icon={Leaf} x='3%' y='10%' delay={0} size={32} />
+      <EnvParticle icon={Wind} x='88%' y='20%' delay={1} size={28} />
+      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2} size={24} />
+      <EnvParticle icon={Leaf} x='8%' y='75%' delay={0.5} size={36} />
 
       <div className='container relative z-10 py-12'>
 
@@ -275,7 +292,7 @@ export default function DetalleConvocatoriaPage() {
               <div className='flex items-center gap-3'>
                 <Chip>{item.tipo_conv_comun?.tipo_conv_comun_titulo ?? tipo}</Chip>
                 <span className='text-xs text-lightgrey'>
-                  Publicado por Ingeniería Ambiental — UPEA
+                  Publicado por Sociología — UPEA
                 </span>
               </div>
             </SectionIn>

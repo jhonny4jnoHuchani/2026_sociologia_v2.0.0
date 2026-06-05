@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import Image from 'next/image'
@@ -8,8 +8,9 @@ import { ArrowRight, Calendar, Clock, Eye, Sparkles, Megaphone, FileText, Bell }
 import { getGacetaEventos, getInstitucionPrincipal } from '@/services/ambientalService'
 import { ConvocatoriaType, CursoType, InstitucionType } from '@/app/types/ambiental.types'
 import SpecializeSkeleton from '../../Skeleton/Specialize'
+import { isCancelledError } from '@/utils/isCancelledError'
 
-const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
 const formatFecha = (fecha: string) => {
   if (!fecha) return ''
@@ -32,9 +33,9 @@ const isNew = (fecha: string) =>
   new Date(fecha) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
 
 const COLUMNAS = [
-  { label: 'Convocatorias', icon: Megaphone, gradient: 'from-rose-500 to-orange-500',  href: '/#convocatorias' },
-  { label: 'Comunicados',   icon: FileText,  gradient: 'from-blue-500 to-indigo-500',  href: '/#convocatorias' },
-  { label: 'Avisos',        icon: Bell,      gradient: 'from-amber-500 to-yellow-500', href: '/#convocatorias' },
+  { label: 'Convocatorias', icon: Megaphone, gradient: 'from-rose-500 to-orange-500', href: '/#convocatorias' },
+  { label: 'Comunicados', icon: FileText, gradient: 'from-blue-500 to-indigo-500', href: '/#convocatorias' },
+  { label: 'Avisos', icon: Bell, gradient: 'from-amber-500 to-yellow-500', href: '/#convocatorias' },
 ]
 
 interface CardItem {
@@ -172,35 +173,49 @@ const ItemCard = ({
 
 const Specialize = () => {
   const [convocatorias, setConvocatorias] = useState<ConvocatoriaType[]>([])
-  const [cursos, setCursos]               = useState<CursoType[]>([])
-  const [institucion, setInstitucion]     = useState<InstitucionType | null>(null)
-  const [loading, setLoading]             = useState(true)
+  const [cursos, setCursos] = useState<CursoType[]>([])
+  const [institucion, setInstitucion] = useState<InstitucionType | null>(null)
+  const [loading, setLoading] = useState(true)
+
 
   useEffect(() => {
+    const controller = new AbortController()
+    let isMounted = true
+
     const fetchData = async () => {
       try {
         const [gacetaData, principalData] = await Promise.all([
-          getGacetaEventos(),
-          getInstitucionPrincipal(),
+          getGacetaEventos(controller.signal),
+          getInstitucionPrincipal(controller.signal),
         ])
+        if (!isMounted) return
         setConvocatorias(gacetaData.convocatorias)
         setCursos(gacetaData.cursos)
         setInstitucion(principalData.Descripcion)
       } catch (error) {
+        if (isCancelledError(error)) return
         console.error('Error fetching Specialize:', error)
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     }
+
     fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [])
+
+
 
   const getItem = (label: string): CardItem | null => {
     if (['Convocatorias', 'Comunicados', 'Avisos'].includes(label)) {
       const tipoMap: Record<string, string> = {
         Convocatorias: 'CONVOCATORIAS',
-        Comunicados:   'COMUNICADOS',
-        Avisos:        'AVISOS',
+        Comunicados: 'COMUNICADOS',
+        Avisos: 'AVISOS',
       }
       const found = convocatorias
         .filter(c => c.con_estado === '1' && c.tipo_conv_comun?.tipo_conv_comun_titulo === tipoMap[label])
@@ -235,15 +250,15 @@ const Specialize = () => {
         <div className='text-center mb-10'>
           <h2 className='mb-4'>Lo más reciente</h2>
           <p className='text-lg font-normal max-w-2xl mx-auto text-lightgrey'>
-            Convocatorias de la carrera de {institucion?.institucion_nombre ?? 'Ingeniería Ambiental'}
+            Convocatorias de la carrera de {institucion?.institucion_nombre ?? 'Sociología'}
           </p>
         </div>
         <div className='grid lg:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-6'>
           {loading
             ? Array.from({ length: 3 }).map((_, i) => <SpecializeSkeleton key={i} />)
             : COLUMNAS.map(col => (
-                <ItemCard key={col.label} col={col} item={getItem(col.label)} />
-              ))}
+              <ItemCard key={col.label} col={col} item={getItem(col.label)} />
+            ))}
         </div>
       </div>
     </section>

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { motion, useScroll, useTransform, AnimatePresence, easeOut, type Variants } from 'motion/react'
 import { getContenido, getInstitucionPrincipal } from '@/services/ambientalService'
 import { PortadaType, InstitucionType } from '@/app/types/ambiental.types'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -71,17 +72,7 @@ const LetterByLetter = ({ text, className }: { text: string; className?: string 
 )
 
 // ── Texto que gira en 3D al entrar ────────────────────────────────────
-const SpinIn = ({ text, className, delay = 0 }: { text: string; className?: string; delay?: number }) => (
-  <motion.span
-    className={`inline-block ${className ?? ''}`}
-    initial={{ rotateX: 90, opacity: 0, transformPerspective: 800 }}
-    animate={{ rotateX: 0, opacity: 1 }}
-    transition={{ duration: 0.7, delay, ease: [0.34, 1.2, 0.64, 1] }}
-    style={{ transformOrigin: 'bottom center', display: 'inline-block' }}
-  >
-    {text}
-  </motion.span>
-)
+
 
 // ── Botón ─────────────────────────────────────────────────────────────
 const ActionButton = ({
@@ -169,26 +160,34 @@ const Hero = () => {
   const yParallax = useTransform(scrollY, [0, 500], [0, -80])
   const opacityParallax = useTransform(scrollY, [0, 300], [1, 0.5])
 
-  useEffect(() => {
-    let cancelled = false
-    const fetchData = async () => {
-      try {
-        const [contenidoData, principalData] = await Promise.all([
-          getContenido(),
-          getInstitucionPrincipal(),
-        ])
-        if (cancelled) return
-        setPortadas(contenidoData.portada)
-        setInstitucion(principalData.Descripcion)
-      } catch (error) {
-        console.error('Error fetching Hero data:', error)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+useEffect(() => {
+  const controller = new AbortController()
+  let isMounted = true
+
+  const fetchData = async () => {
+    try {
+      const [contenidoData, principalData] = await Promise.all([
+        getContenido(controller.signal),
+        getInstitucionPrincipal(controller.signal),
+      ])
+      if (!isMounted) return
+      setPortadas(contenidoData.portada)
+      setInstitucion(principalData.Descripcion)
+    } catch (error) {
+      if (isCancelledError(error)) return
+      console.error('Error fetching Hero data:', error)
+    } finally {
+      if (isMounted) setLoading(false)
     }
-    fetchData()
-    return () => { cancelled = true }
-  }, [])
+  }
+
+  fetchData()
+
+  return () => {
+    isMounted = false
+    controller.abort()
+  }
+}, [])
 
   const sliderSettings = {
     dots: true,
@@ -520,7 +519,7 @@ const Hero = () => {
                   ) : (
                     <h1>
                       <LetterByLetter
-                        text={institucion?.institucion_nombre ?? 'Ingeniería Ambiental'}
+                        text={institucion?.institucion_nombre ?? 'Sociología'}
                         className='text-4xl lg:text-5xl font-bold tracking-tight'
                       />
                     </h1>

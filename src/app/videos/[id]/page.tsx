@@ -1,16 +1,16 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { motion } from 'motion/react'
 import {
   ArrowLeft, FileText, Video, Play, // 🔥 CAMBIADO: Youtube → Video
-  AlertCircle, CheckCircle, Calendar,
+  AlertCircle, CheckCircle,
   Leaf, Wind, Droplets, Eye,
 } from 'lucide-react'
 import { getContenido } from '@/services/ambientalService'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 // ── Types ───────────────────────────────────────────────
 interface Video {
@@ -77,14 +77,31 @@ export default function DetalleVideoPage() {
   const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
-    getContenido()
-      .then(data => {
+    const controller = new AbortController()
+    let isMounted = true
+
+    const fetchData = async () => {
+      try {
+        const data = await getContenido(controller.signal)
+        if (!isMounted) return
+
         const found = data.upea_videos?.find((v: Video) => v.video_id === id)
         if (found && found.video_estado === 1) setItem(found)
         else setNotFound(true)
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+      } catch (error) {
+        if (isCancelledError(error)) return
+        console.error(error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [id])
 
   // ── Loading ──
@@ -131,10 +148,10 @@ export default function DetalleVideoPage() {
     <div className='min-h-screen bg-secondary dark:bg-darkmode overflow-x-hidden relative'>
 
       {/* Partículas - CORREGIDO: Video en lugar de Youtube */}
-      <EnvParticle icon={Leaf}     x='3%'  y='10%' delay={0}   size={32} />
-      <EnvParticle icon={Wind}     x='88%' y='20%' delay={1}   size={28} />
-      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2}   size={24} />
-      <EnvParticle icon={Video}    x='8%'  y='75%' delay={0.5} size={36} /> {/* 🔥 CORREGIDO */}
+      <EnvParticle icon={Leaf} x='3%' y='10%' delay={0} size={32} />
+      <EnvParticle icon={Wind} x='88%' y='20%' delay={1} size={28} />
+      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2} size={24} />
+      <EnvParticle icon={Video} x='8%' y='75%' delay={0.5} size={36} /> {/* 🔥 CORREGIDO */}
 
       <div className='container relative z-10 py-12'>
 
@@ -248,8 +265,8 @@ export default function DetalleVideoPage() {
                   className='prose prose-sm dark:prose-invert max-w-none text-lightgrey leading-relaxed
                              [&>p]:mb-3 [&>ul]:list-disc [&>ul]:pl-4 [&>li]:mb-1
                              [&>strong]:text-primary [&>strong]:font-semibold'
-                  dangerouslySetInnerHTML={{ 
-                    __html: item.video_breve_descripcion || 'Sin descripción disponible.' 
+                  dangerouslySetInnerHTML={{
+                    __html: item.video_breve_descripcion || 'Sin descripción disponible.'
                   }}
                 />
               </div>
@@ -271,8 +288,8 @@ export default function DetalleVideoPage() {
                       rel='noopener noreferrer'
                       className='text-sm font-semibold text-primary hover:underline break-all'
                     >
-                      {item.video_enlace?.length > 50 
-                        ? item.video_enlace.substring(0, 50) + '...' 
+                      {item.video_enlace?.length > 50
+                        ? item.video_enlace.substring(0, 50) + '...'
                         : item.video_enlace}
                     </Link>
                   </div>
@@ -285,7 +302,7 @@ export default function DetalleVideoPage() {
               <div className='flex items-center gap-3'>
                 <Video size={14} className='text-primary' /> {/* 🔥 CORREGIDO */}
                 <span className='text-xs text-lightgrey'>
-                  Contenido multimedia — Ingeniería Ambiental UPEA
+                  Contenido  — Sociología UPEA
                 </span>
               </div>
             </SectionIn>

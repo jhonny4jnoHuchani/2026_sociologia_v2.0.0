@@ -14,10 +14,11 @@ import {
 } from 'lucide-react'
 import { getGacetaEventos } from '@/services/ambientalService'
 import { OfertaAcademicaType } from '@/app/types/ambiental.types'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 // ── Helpers ───────────────────────────────────────────────
-const mesesLargos = ['enero','febrero','marzo','abril','mayo','junio',
-  'julio','agosto','septiembre','octubre','noviembre','diciembre']
+const mesesLargos = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
 const formatFechaLarga = (fecha: string) => {
   if (!fecha) return ''
@@ -25,7 +26,7 @@ const formatFechaLarga = (fecha: string) => {
   return `${d.getDate()} de ${mesesLargos[d.getMonth()]} de ${d.getFullYear()}`
 }
 
-const isActive  = (ini: string, fin: string) => {
+const isActive = (ini: string, fin: string) => {
   const now = new Date()
   return new Date(ini) <= now && now <= new Date(fin)
 }
@@ -84,21 +85,38 @@ const InfoRow = ({
 
 // ══════════════════════════════════════════════════════════
 export default function DetalleOfertaPage() {
-  const params                  = useParams()
-  const id                      = Number(params.id)
-  const [item, setItem]         = useState<OfertaAcademicaType | null>(null)
-  const [loading, setLoading]   = useState(true)
+  const params = useParams()
+  const id = Number(params.id)
+  const [item, setItem] = useState<OfertaAcademicaType | null>(null)
+  const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
-    getGacetaEventos()
-      .then(data => {
+    const controller = new AbortController()
+    let isMounted = true
+
+    const fetchData = async () => {
+      try {
+        const data = await getGacetaEventos(controller.signal)
+        if (!isMounted) return
+
         const found = data.ofertasAcademicas.find((o: OfertaAcademicaType) => o.ofertas_id === id)
         if (found) setItem(found)
         else setNotFound(true)
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+      } catch (error) {
+        if (isCancelledError(error)) return
+        console.error(error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [id])
 
   // ── Loading ──
@@ -139,17 +157,17 @@ export default function DetalleOfertaPage() {
     )
   }
 
-  const active  = isActive(item.ofertas_inscripciones_ini, item.ofertas_inscripciones_fin)
+  const active = isActive(item.ofertas_inscripciones_ini, item.ofertas_inscripciones_fin)
   const expired = isExpired(item.ofertas_inscripciones_fin)
 
   return (
     <div className='min-h-screen bg-secondary dark:bg-darkmode overflow-x-hidden relative'>
 
       {/* Partículas */}
-      <EnvParticle icon={Leaf}     x='3%'  y='10%' delay={0}   size={32} />
-      <EnvParticle icon={Wind}     x='88%' y='20%' delay={1}   size={28} />
-      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2}   size={24} />
-      <EnvParticle icon={Leaf}     x='8%'  y='75%' delay={0.5} size={36} />
+      <EnvParticle icon={Leaf} x='3%' y='10%' delay={0} size={32} />
+      <EnvParticle icon={Wind} x='88%' y='20%' delay={1} size={28} />
+      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2} size={24} />
+      <EnvParticle icon={Leaf} x='8%' y='75%' delay={0.5} size={36} />
 
       <div className='container relative z-10 py-12'>
 
@@ -293,7 +311,7 @@ export default function DetalleOfertaPage() {
               <div className='flex items-center gap-3'>
                 <CheckCircle size={14} className='text-primary' />
                 <span className='text-xs text-lightgrey'>
-                  Publicado por Ingeniería Ambiental — UPEA
+                  Publicado por Sociología — UPEA
                 </span>
               </div>
             </SectionIn>

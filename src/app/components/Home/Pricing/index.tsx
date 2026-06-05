@@ -1,11 +1,12 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { motion, useScroll, useTransform } from 'motion/react'
-import { Sparkles, Play, Volume2, VolumeX, Maximize, Eye, ChevronRight, Award, Leaf, Trees, Droplets, Sun, Pause } from 'lucide-react'
+import { Sparkles, Play, Volume2, VolumeX, Maximize, Eye, ChevronRight, Pause } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { getInstitucionPrincipal } from '@/services/ambientalService'
 import { InstitucionType } from '@/app/types/ambiental.types'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 const Pricing = () => {
   const [institucion, setInstitucion] = useState<InstitucionType | null>(null)
@@ -19,23 +20,34 @@ const Pricing = () => {
   const opacity = useTransform(scrollYProgress, [0, 0.3], [1, 0.8])
   const scale = useTransform(scrollYProgress, [0, 0.3], [1, 0.97])
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+useEffect(() => {
+  setMounted(true)
+}, [])
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const data = await getInstitucionPrincipal()
-        setInstitucion(data.Descripcion)
-      } catch (error) {
-        console.error('Error fetching VideoVision:', error)
-      } finally {
-        setLoading(false)
-      }
+useEffect(() => {
+  const controller = new AbortController()
+  let isMounted = true
+
+  const fetchData = async () => {
+    try {
+      const data = await getInstitucionPrincipal(controller.signal)
+      if (!isMounted) return
+      setInstitucion(data.Descripcion)
+    } catch (error) {
+      if (isCancelledError(error)) return
+      console.error('Error fetching VideoVision:', error)
+    } finally {
+      if (isMounted) setLoading(false)
     }
-    fetchData()
-  }, [])
+  }
+
+  fetchData()
+
+  return () => {
+    isMounted = false
+    controller.abort()
+  }
+}, [])
 
   const currentTheme = mounted ? (theme === 'system' ? systemTheme : theme) : 'light'
   const isDark = currentTheme === 'dark'
@@ -45,12 +57,6 @@ const Pricing = () => {
   const tertiaryColor = institucion?.colorinstitucion?.[0]?.color_terciario ?? '#2d6a4f'
   const videoUrl = institucion?.institucion_link_video_vision
 
-  const stats = [
-    { icon: Trees, label: "Áreas Verdes", value: "12+", color: primaryColor },
-    { icon: Droplets, label: "Proyectos Agua", value: "8", color: secondaryColor },
-    { icon: Sun, label: "Energía Limpia", value: "5", color: "#e9c46a" },
-    { icon: Award, label: "Años Excelencia", value: "15+", color: "#e76f51" },
-  ]
 
   if (loading) {
     return (
@@ -208,7 +214,7 @@ const Pricing = () => {
               viewport={{ once: true }}
               className={`text-xl sm:text-2xl lg:text-3xl font-semibold ${isDark ? 'text-white/90' : 'text-gray-800'}`}
             >
-              {institucion?.institucion_nombre ?? 'Ingeniería Ambiental'}
+              {institucion?.institucion_nombre ?? 'Sociología'}
             </motion.h3>
 
             {/* Descripción */}

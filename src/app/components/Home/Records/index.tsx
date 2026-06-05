@@ -1,10 +1,11 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { getContenido, getInstitucionPrincipal } from '@/services/ambientalService'
 import { UbicacionType, InstitucionType } from '@/app/types/ambiental.types'
 import RecordSkeleton from '../../Skeleton/Record'
 import { motion } from 'motion/react'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 const Ubicacion = () => {
   const [ubicacion, setUbicacion] = useState<UbicacionType | null>(null)
@@ -12,21 +13,34 @@ const Ubicacion = () => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const controller = new AbortController()
+    let isMounted = true
+
     const fetchData = async () => {
       try {
         const [contenidoData, principalData] = await Promise.all([
-          getContenido(),
-          getInstitucionPrincipal(),
+          getContenido(controller.signal),
+          getInstitucionPrincipal(controller.signal),
         ])
+
+        if (!isMounted) return  // el componente ya se desmontó, no actualizar estado
+
         setUbicacion(contenidoData.ubicacion[0] ?? null)
         setInstitucion(principalData.Descripcion)
       } catch (error) {
-        console.error('Error fetching ubicacion:', error)
+        if (isCancelledError(error)) return
+        console.error('Error fetching records:', error)
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     }
+
     fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()  // cancela la petición HTTP en vuelo
+    }
   }, [])
 
   return (
@@ -85,7 +99,7 @@ const Ubicacion = () => {
           <h2 className='text-3xl lg:text-4xl font-bold'>
             Ubicación —{' '}
             <span style={{ color: 'var(--color-primario)' }}>
-              {institucion?.institucion_nombre ?? 'Ingeniería Ambiental'}
+              {institucion?.institucion_nombre ?? 'Sociología'}
             </span>
           </h2>
 
@@ -155,7 +169,7 @@ const Ubicacion = () => {
               transition={{ delay: 0.6 }}
             >
               <svg xmlns='http://www.w3.org/2000/svg' className='w-4 h-4' fill='currentColor' viewBox='0 0 24 24'>
-                <path d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z'/>
+                <path d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z' />
               </svg>
               {institucion.institucion_nombre}
             </motion.div>

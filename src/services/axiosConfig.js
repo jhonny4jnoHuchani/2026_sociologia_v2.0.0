@@ -23,6 +23,11 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Ignorar silenciosamente las cancelaciones por AbortController
+    if (axios.isCancel(error)) {
+      return Promise.reject(error)
+    }
+
     if (error.response) {
       console.error(`[API Error] ${error.response.status}:`, error.response.data);
     } else if (error.request) {

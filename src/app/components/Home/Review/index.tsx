@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { getGacetaEventos, getInstitucionPrincipal } from '@/services/ambientalService'
@@ -10,6 +10,7 @@ import {
 import { getRecursos } from '@/services/ambientalService'
 import CategoriesExplorer from '../Categories/CategoriesExplorer'
 import MisionVisionAcordion from '../Categories/MisionVisionAcordion'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 const Review = () => {
   const [institucion, setInstitucion] = useState<InstitucionType | null>(null)
@@ -23,33 +24,46 @@ const Review = () => {
   const [videos, setVideos] = useState<VideoType[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [principalData, gacetaData, recursosData] = await Promise.all([
-          getInstitucionPrincipal(),
-          getGacetaEventos(),
-          getRecursos(),
-        ])
-        setInstitucion(principalData.Descripcion)
-        setConvocatorias(gacetaData.convocatorias)
-        setCursos(gacetaData.cursos)
-        setEventos(gacetaData.upea_evento)
-        setGaceta(gacetaData.upea_gaceta_universitaria)
-        setServicios(gacetaData.serviciosCarrera)
-        setOfertas(gacetaData.ofertasAcademicas)
-        setPublicaciones(recursosData.upea_publicaciones)
-        // videos vienen de contenido — si ya los tienes en contexto global pásalos como prop
-        // por ahora dejamos vacío hasta que lo conectes
-        setVideos([])
-      } catch (error) {
-        console.error('Error fetching Review data:', error)
-      } finally {
-        setLoading(false)
-      }
+
+
+useEffect(() => {
+  const controller = new AbortController()
+  let isMounted = true
+
+  const fetchData = async () => {
+    try {
+      const [principalData, gacetaData, recursosData] = await Promise.all([
+        getInstitucionPrincipal(controller.signal),
+        getGacetaEventos(controller.signal),
+        getRecursos(controller.signal),
+      ])
+      if (!isMounted) return
+      setInstitucion(principalData.Descripcion)
+      setConvocatorias(gacetaData.convocatorias)
+      setCursos(gacetaData.cursos)
+      setEventos(gacetaData.upea_evento)
+      setGaceta(gacetaData.upea_gaceta_universitaria)
+      setServicios(gacetaData.serviciosCarrera)
+      setOfertas(gacetaData.ofertasAcademicas)
+      setPublicaciones(recursosData.upea_publicaciones)
+      setVideos([])
+    } catch (error) {
+      if (isCancelledError(error)) return
+      console.error('Error fetching Review data:', error)
+    } finally {
+      if (isMounted) setLoading(false)
     }
-    fetchData()
-  }, [])
+  }
+
+  fetchData()
+
+  return () => {
+    isMounted = false
+    controller.abort()
+  }
+}, [])
+
+
 
   return (
     <section className='bg-secondary dark:bg-darklight py-16'>
@@ -89,7 +103,7 @@ const Review = () => {
               Universidad Pública de El Alto
             </p>
             <h2 className='text-3xl font-bold text-darkblue dark:text-white mb-8'>
-              {institucion?.institucion_nombre ?? 'Ingeniería Ambiental'}
+              {institucion?.institucion_nombre ?? 'Sociología'}
             </h2>
             <MisionVisionAcordion institucion={institucion} loading={loading} />
           </div>

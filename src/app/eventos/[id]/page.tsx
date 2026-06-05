@@ -11,6 +11,7 @@ import {
   CheckCircle, XCircle, Leaf, Wind, Droplets,
 } from 'lucide-react'
 import { getGacetaEventos } from '@/services/ambientalService'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 // ── Types ───────────────────────────────────────────────
 interface Evento {
@@ -26,8 +27,8 @@ interface Evento {
 }
 
 // ── Helpers ─────────────────────────────────────────────
-const mesesLargos = ['enero','febrero','marzo','abril','mayo','junio',
-  'julio','agosto','septiembre','octubre','noviembre','diciembre']
+const mesesLargos = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
 const formatFechaLarga = (fecha: string) => {
   if (!fecha) return ''
@@ -113,15 +114,31 @@ export default function DetalleEventoPage() {
   const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
-    getGacetaEventos()
-      .then(data => {
-        // 🔥 CAMBIO CLAVE: buscar en upea_evento
+    const controller = new AbortController()
+    let isMounted = true
+
+    const fetchData = async () => {
+      try {
+        const data = await getGacetaEventos(controller.signal)
+        if (!isMounted) return
+
         const found = data.upea_evento.find((e: Evento) => e.evento_id === id)
         if (found) setItem(found)
         else setNotFound(true)
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+      } catch (error) {
+        if (isCancelledError(error)) return
+        console.error(error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [id])
 
   // ── Loading ──
@@ -169,10 +186,10 @@ export default function DetalleEventoPage() {
     <div className='min-h-screen bg-secondary dark:bg-darkmode overflow-x-hidden relative'>
 
       {/* Partículas */}
-      <EnvParticle icon={Leaf}     x='3%'  y='10%' delay={0}   size={32} />
-      <EnvParticle icon={Wind}     x='88%' y='20%' delay={1}   size={28} />
-      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2}   size={24} />
-      <EnvParticle icon={Calendar} x='8%'  y='75%' delay={0.5} size={36} />
+      <EnvParticle icon={Leaf} x='3%' y='10%' delay={0} size={32} />
+      <EnvParticle icon={Wind} x='88%' y='20%' delay={1} size={28} />
+      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2} size={24} />
+      <EnvParticle icon={Calendar} x='8%' y='75%' delay={0.5} size={36} />
 
       <div className='container relative z-10 py-12'>
 
@@ -312,7 +329,7 @@ export default function DetalleEventoPage() {
               <div className='flex items-center gap-3'>
                 <Calendar size={14} className='text-primary' />
                 <span className='text-xs text-lightgrey'>
-                  Organizado por Ingeniería Ambiental — UPEA
+                  Organizado por Sociología — UPEA
                 </span>
               </div>
             </SectionIn>

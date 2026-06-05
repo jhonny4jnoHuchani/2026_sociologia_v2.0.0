@@ -13,10 +13,11 @@ import {
 } from 'lucide-react'
 import { getRecursos } from '@/services/ambientalService'
 import { PublicacionType } from '@/app/types/ambiental.types'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 // ── Helpers ───────────────────────────────────────────────
-const mesesLargos = ['enero','febrero','marzo','abril','mayo','junio',
-  'julio','agosto','septiembre','octubre','noviembre','diciembre']
+const mesesLargos = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
 const formatFechaLarga = (fecha: string) => {
   if (!fecha) return ''
@@ -59,21 +60,38 @@ const SectionIn = ({
 
 // ══════════════════════════════════════════════════════════
 export default function DetallePublicacionPage() {
-  const params                  = useParams()
-  const id                      = Number(params.id)
-  const [item, setItem]         = useState<PublicacionType | null>(null)
-  const [loading, setLoading]   = useState(true)
+  const params = useParams()
+  const id = Number(params.id)
+  const [item, setItem] = useState<PublicacionType | null>(null)
+  const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
-    getRecursos()
-      .then(data => {
+    const controller = new AbortController()
+    let isMounted = true
+
+    const fetchData = async () => {
+      try {
+        const data = await getRecursos(controller.signal)
+        if (!isMounted) return
+
         const found = data.upea_publicaciones.find((p: PublicacionType) => p.publicaciones_id === id)
         if (found) setItem(found)
         else setNotFound(true)
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+      } catch (error) {
+        if (isCancelledError(error)) return
+        console.error(error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [id])
 
   // ── Loading ──
@@ -118,10 +136,10 @@ export default function DetallePublicacionPage() {
     <div className='min-h-screen bg-secondary dark:bg-darkmode overflow-x-hidden relative'>
 
       {/* Partículas */}
-      <EnvParticle icon={Leaf}     x='3%'  y='10%' delay={0}   size={32} />
-      <EnvParticle icon={Wind}     x='88%' y='20%' delay={1}   size={28} />
-      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2}   size={24} />
-      <EnvParticle icon={Leaf}     x='8%'  y='75%' delay={0.5} size={36} />
+      <EnvParticle icon={Leaf} x='3%' y='10%' delay={0} size={32} />
+      <EnvParticle icon={Wind} x='88%' y='20%' delay={1} size={28} />
+      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2} size={24} />
+      <EnvParticle icon={Leaf} x='8%' y='75%' delay={0.5} size={36} />
 
       <div className='container relative z-10 py-12'>
 
@@ -273,7 +291,7 @@ export default function DetallePublicacionPage() {
               <div className='flex items-center gap-3'>
                 <Newspaper size={14} className='text-primary' />
                 <span className='text-xs text-lightgrey'>
-                  Publicado por Ingeniería Ambiental — UPEA
+                  Publicado por Sociología — UPEA
                 </span>
               </div>
             </SectionIn>

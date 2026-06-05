@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
-import { motion, useScroll, useTransform, animate, useMotionValue, useInView, useSpring } from 'motion/react'
+import { motion, useScroll, useTransform, animate, useMotionValue, useInView } from 'motion/react'
 import { FaFacebook, FaWhatsapp, FaPhone } from 'react-icons/fa6'
 import {
   MdOutlineSchool, MdOutlineVisibility, MdOutlineTrackChanges,
@@ -12,6 +12,7 @@ import { HiOutlineUserGroup } from 'react-icons/hi2'
 import { Leaf, TreePine, Wind, Droplets, Sparkles, Crown } from 'lucide-react'
 import { getInstitucionPrincipal, getContenido } from '@/services/ambientalService'
 import { InstitucionType, AutoridadType } from '@/app/types/ambiental.types'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 // ── Helpers ───────────────────────────────────────────────
 const StripHtml = ({ html }: { html: string }) =>
@@ -279,13 +280,32 @@ export default function AboutPage() {
   const mvX = useTransform(mvScroll, [0, 1], [-40, 40])
 
   useEffect(() => {
-    Promise.all([getInstitucionPrincipal(), getContenido()])
-      .then(([principal, contenido]) => {
+    const controller = new AbortController()
+    let isMounted = true
+
+    const fetchData = async () => {
+      try {
+        const [principal, contenido] = await Promise.all([
+          getInstitucionPrincipal(controller.signal),
+          getContenido(controller.signal),
+        ])
+        if (!isMounted) return
         setInstitucion(principal.Descripcion)
         setAutoridades(contenido.autoridad)
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+      } catch (error) {
+        if (isCancelledError(error)) return
+        console.error(error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [])
 
   // ✅ Sin primaryColor ni secondaryColor locales
@@ -307,16 +327,16 @@ export default function AboutPage() {
     <div className='min-h-screen bg-secondary dark:bg-darkmode overflow-x-hidden relative'>
 
       {/* Partículas */}
-      <EnvParticle icon={Leaf}     x='2%'  y='8%'  delay={0}   size={35} />
-      <EnvParticle icon={TreePine} x='90%' y='5%'  delay={1}   size={45} secondary />
-      <EnvParticle icon={Wind}     x='94%' y='42%' delay={2}   size={30} />
-      <EnvParticle icon={Droplets} x='4%'  y='48%' delay={1.5} size={28} secondary />
-      <EnvParticle icon={Leaf}     x='82%' y='72%' delay={3}   size={38} />
-      <EnvParticle icon={TreePine} x='6%'  y='78%' delay={2.5} size={48} secondary />
-      <EnvParticle icon={Wind}     x='48%' y='88%' delay={4}   size={32} />
+      <EnvParticle icon={Leaf} x='2%' y='8%' delay={0} size={35} />
+      <EnvParticle icon={TreePine} x='90%' y='5%' delay={1} size={45} secondary />
+      <EnvParticle icon={Wind} x='94%' y='42%' delay={2} size={30} />
+      <EnvParticle icon={Droplets} x='4%' y='48%' delay={1.5} size={28} secondary />
+      <EnvParticle icon={Leaf} x='82%' y='72%' delay={3} size={38} />
+      <EnvParticle icon={TreePine} x='6%' y='78%' delay={2.5} size={48} secondary />
+      <EnvParticle icon={Wind} x='48%' y='88%' delay={4} size={32} />
       <EnvParticle icon={Droplets} x='72%' y='18%' delay={0.5} size={28} secondary />
       <EnvParticle icon={Sparkles} x='15%' y='30%' delay={3.5} size={20} rotate={false} />
-      <EnvParticle icon={Crown}    x='85%' y='60%' delay={2.8} size={25} secondary rotate={false} />
+      <EnvParticle icon={Crown} x='85%' y='60%' delay={2.8} size={25} secondary rotate={false} />
 
       {/* HERO */}
       {institucion?.institucion_sobre_ins && (
@@ -359,9 +379,9 @@ export default function AboutPage() {
                 <SectionIn delay={0.35} yOffset={20}>
                   <div className='grid grid-cols-3 gap-4 pt-4'>
                     {[
-                      { n: 13,  suffix: '+', label: 'Años',       icon: Crown          },
-                      { n: 500, suffix: '+', label: 'Egresados',   icon: HiOutlineUserGroup },
-                      { n: 100, suffix: '%', label: 'Compromiso',  icon: Sparkles       },
+                      { n: 13, suffix: '+', label: 'Años', icon: Crown },
+                      { n: 500, suffix: '+', label: 'Egresados', icon: HiOutlineUserGroup },
+                      { n: 100, suffix: '%', label: 'Compromiso', icon: Sparkles },
                     ].map(({ n, suffix, label, icon: Icon }) => (
                       <motion.div
                         key={label}
@@ -679,11 +699,10 @@ export default function AboutPage() {
               />
             </SectionIn>
 
-            <div className={`grid gap-8 ${
-              autoridadesValidas.length === 1 ? 'grid-cols-1 max-w-sm mx-auto'
-              : autoridadesValidas.length === 2 ? 'grid-cols-1 sm:grid-cols-2 max-w-2xl mx-auto'
-              : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-            }`}>
+            <div className={`grid gap-8 ${autoridadesValidas.length === 1 ? 'grid-cols-1 max-w-sm mx-auto'
+                : autoridadesValidas.length === 2 ? 'grid-cols-1 sm:grid-cols-2 max-w-2xl mx-auto'
+                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+              }`}>
               {autoridadesValidas.map((autoridad, i) => (
                 <AutoridadCard key={autoridad.id_autoridad ?? i} autoridad={autoridad} index={i} />
               ))}

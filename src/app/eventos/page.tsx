@@ -1,4 +1,4 @@
-// RUTA: src/app/eventos/page.tsx
+﻿// RUTA: src/app/eventos/page.tsx
 'use client'
 
 import Image from 'next/image'
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { getGacetaEventos, getContenido } from '@/services/ambientalService'
 import { PortadaType } from '@/app/types/ambiental.types'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 // ── Types ───────────────────────────────────────────────
 interface Evento {
@@ -26,7 +27,7 @@ interface Evento {
 }
 
 // ── Helpers ─────────────────────────────────────────────
-const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
 const formatFecha = (fecha: string) => {
   if (!fecha) return ''
@@ -39,12 +40,6 @@ const formatHora = (hora: string) => {
   return hora.substring(0, 5)
 }
 
-const isUpcoming = (fecha: string) => {
-  const eventDate = new Date(fecha)
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return eventDate >= today
-}
 
 const isExpired = (fecha: string) => {
   const eventDate = new Date(fecha)
@@ -92,18 +87,37 @@ export default function EventosPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([getGacetaEventos(), getContenido()])
-      .then(([gacetaData, contenidoData]) => {
-        // 🔥 CAMBIO CLAVE: usar upea_evento en lugar de ofertasAcademicas
+    const controller = new AbortController()
+    let isMounted = true
+
+    const fetchData = async () => {
+      try {
+        const [gacetaData, contenidoData] = await Promise.all([
+          getGacetaEventos(controller.signal),
+          getContenido(controller.signal),
+        ])
+        if (!isMounted) return
+
         const eventos = [...gacetaData.upea_evento]
           .sort((a, b) =>
             new Date(b.evento_fecha).getTime() - new Date(a.evento_fecha).getTime()
           )
         setItems(eventos)
         setPortadas(contenidoData.portada)
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+      } catch (error) {
+        if (isCancelledError(error)) return
+        console.error(error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [])
 
   return (
@@ -173,7 +187,7 @@ export default function EventosPage() {
             />
 
             <p className='text-gray-200 max-w-xl mx-auto text-base drop-shadow'>
-              Actividades, invitaciones y eventos — Ingeniería Ambiental UPEA
+              Actividades, invitaciones y eventos — Sociología UPEA
             </p>
           </motion.div>
         </div>

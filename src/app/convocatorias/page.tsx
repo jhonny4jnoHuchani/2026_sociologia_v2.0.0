@@ -1,7 +1,7 @@
 import ConvocatoriasGrid from './ConvocatoriasGrid'
 
 export const metadata = {
-  title: 'Convocatorias — Ingeniería Ambiental UPEA',
+  title: 'Convocatorias — Sociología UPEA',
 }
 
 export default function ConvocatoriasPage() {

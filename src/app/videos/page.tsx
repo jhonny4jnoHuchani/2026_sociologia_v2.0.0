@@ -1,15 +1,16 @@
-'use client'
+﻿'use client'
 
 import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import {
-  Calendar, ChevronRight, Leaf, Wind,
-  Droplets, Video, Play, Eye, X,
+  ChevronRight, Leaf, Wind,
+  Droplets, Video, Play, X,
 } from 'lucide-react'
-import { getGacetaEventos, getContenido } from '@/services/ambientalService'
+import { getContenido } from '@/services/ambientalService'
 import { PortadaType } from '@/app/types/ambiental.types'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 // ── Types ───────────────────────────────────────────────
 interface Video {
@@ -39,13 +40,13 @@ const getYouTubeEmbedUrl = (url: string) => {
 }
 
 // ── Modal de Video ──────────────────────────────────────
-const VideoModal = ({ 
-  video, 
-  isOpen, 
-  onClose 
-}: { 
-  video: Video | null; 
-  isOpen: boolean; 
+const VideoModal = ({
+  video,
+  isOpen,
+  onClose
+}: {
+  video: Video | null;
+  isOpen: boolean;
   onClose: () => void;
 }) => {
   useEffect(() => {
@@ -155,16 +156,35 @@ export default function VideosPage() {
   const [modalOpen, setModalOpen] = useState(false)
 
   useEffect(() => {
-    Promise.all([getGacetaEventos(), getContenido()])
-      .then(([gacetaData, contenidoData]) => {
+    const controller = new AbortController()
+    let isMounted = true
+
+    const fetchData = async () => {
+      try {
+        const [contenidoData] = await Promise.all([
+          getContenido(controller.signal),
+        ])
+        if (!isMounted) return
+
         const videosActivos = [...(contenidoData.upea_videos || [])]
           .filter(v => v.video_estado === 1)
           .sort((a, b) => b.video_id - a.video_id)
         setItems(videosActivos)
         setPortadas(contenidoData.portada)
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+      } catch (error) {
+        if (isCancelledError(error)) return
+        console.error(error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [])
 
   const openModal = (video: Video, e: React.MouseEvent) => {
@@ -186,10 +206,10 @@ export default function VideosPage() {
       <VideoModal video={selectedVideo} isOpen={modalOpen} onClose={closeModal} />
 
       {/* Partículas */}
-      <EnvParticle icon={Leaf}     x='3%'  y='12%' delay={0}   size={32} />
-      <EnvParticle icon={Wind}     x='88%' y='20%' delay={1}   size={28} />
-      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2}   size={24} />
-      <EnvParticle icon={Video}    x='8%'  y='75%' delay={0.5} size={36} />
+      <EnvParticle icon={Leaf} x='3%' y='12%' delay={0} size={32} />
+      <EnvParticle icon={Wind} x='88%' y='20%' delay={1} size={28} />
+      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2} size={24} />
+      <EnvParticle icon={Video} x='8%' y='75%' delay={0.5} size={36} />
 
       {/* ── Hero ── */}
       <section className='relative h-72 md:h-80 lg:h-96 w-full overflow-hidden'>
@@ -250,7 +270,7 @@ export default function VideosPage() {
             />
 
             <p className='text-gray-200 max-w-xl mx-auto text-base drop-shadow'>
-              Contenido multimedia, invitaciones y eventos — Ingeniería Ambiental UPEA
+              Contenido multimedia, invitaciones y eventos — Sociología UPEA
             </p>
           </motion.div>
         </div>
@@ -278,7 +298,7 @@ export default function VideosPage() {
               <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
                 {items.map((item, index) => {
                   const thumbnail = getYouTubeThumbnail(item.video_enlace)
-                  
+
                   return (
                     <motion.div
                       key={item.video_id}
@@ -306,7 +326,7 @@ export default function VideosPage() {
                               />
                               <div className='absolute inset-0 bg-gradient-to-t from-black/50 via-transparent
                                               to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300' />
-                              
+
                               {/* Overlay con ícono de play - SOLO ESTE BOTÓN ABRE MODAL */}
                               <div className='absolute inset-0 flex items-center justify-center
                                               bg-black/30 group-hover:bg-black/40 transition-all duration-300'>
@@ -344,10 +364,10 @@ export default function VideosPage() {
                           </h5>
 
                           {item.video_breve_descripcion && (
-                            <div 
+                            <div
                               className='text-xs text-lightgrey line-clamp-2 mb-3'
-                              dangerouslySetInnerHTML={{ 
-                                __html: item.video_breve_descripcion || '' 
+                              dangerouslySetInnerHTML={{
+                                __html: item.video_breve_descripcion || ''
                               }}
                             />
                           )}

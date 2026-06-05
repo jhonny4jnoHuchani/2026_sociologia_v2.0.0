@@ -16,8 +16,11 @@ const ID = process.env.NEXT_PUBLIC_ID_INSTITUCION;
 // GET /institucionesPrincipal/:id
 // Retorna: descripción, misión, visión, objetivos, colores, redes
 // ============================================================
-export const getInstitucionPrincipal = async () => {
-  const response = await axiosInstance.get(`institucionesPrincipal/${ID}`);
+export const getInstitucionPrincipal = async (signal) => {
+  const response = await axiosInstance.get(`institucionesPrincipal/${ID}`,{ signal });
+  if (!response.data) {
+    throw new Error("No se pudo obtener la información principal de la institución");
+  }
   return response.data;
 };
 
@@ -26,8 +29,11 @@ export const getInstitucionPrincipal = async () => {
 // GET /institucion/:id/contenido
 // Retorna: autoridad, portada, ubicación, videos
 // ============================================================
-export const getContenido = async () => {
-  const response = await axiosInstance.get(`institucion/${ID}/contenido`);
+export const getContenido = async (signal) => {
+  const response = await axiosInstance.get(`institucion/${ID}/contenido`, { signal });
+  if (!response.data) {
+    throw new Error("No se pudo obtener el contenido de la institución");
+  }
   return response.data;
 };
 
@@ -36,8 +42,11 @@ export const getContenido = async () => {
 // GET /institucion/:id/recursos
 // Retorna: publicaciones, links externos, links internos
 // ============================================================
-export const getRecursos = async () => {
-  const response = await axiosInstance.get(`institucion/${ID}/recursos`);
+export const getRecursos = async (signal) => {
+  const response = await axiosInstance.get(`institucion/${ID}/recursos`, { signal });
+  if (!response.data) {
+    throw new Error("No se pudo obtener los recursos de la institución");
+  }
   return response.data;
 };
 
@@ -46,8 +55,11 @@ export const getRecursos = async () => {
 // GET /institucion/:id/gacetaEventos
 // Retorna: gaceta, eventos, cursos, convocatorias, servicios, ofertas
 // ============================================================
-export const getGacetaEventos = async () => {
-  const response = await axiosInstance.get(`institucion/${ID}/gacetaEventos`);
+export const getGacetaEventos = async (signal) => {
+  const response = await axiosInstance.get(`institucion/${ID}/gacetaEventos`, { signal });
+  if (!response.data) {
+    throw new Error("No se pudo obtener la gaceta y eventos de la institución");
+  }
   return response.data;
 };
 
@@ -55,13 +67,15 @@ export const getGacetaEventos = async () => {
 // CARGA COMPLETA: todos los endpoints en paralelo
 // Útil para el HomeView donde se necesitan todos los datos
 // ============================================================
-export const getAllData = async () => {
+export const getAllData = async (signal) => {
   const [principal, contenido, recursos, gacetaEventos] = await Promise.all([
-    getInstitucionPrincipal(),
-    getContenido(),
-    getRecursos(),
-    getGacetaEventos(),
+    getInstitucionPrincipal(signal),
+    getContenido(signal),
+    getRecursos(signal),
+    getGacetaEventos(signal),
   ]);
-
+  if (!principal || !contenido || !recursos || !gacetaEventos) {
+    throw new Error("No se pudo obtener toda la información de la institución");
+  }
   return { principal, contenido, recursos, gacetaEventos };
 };

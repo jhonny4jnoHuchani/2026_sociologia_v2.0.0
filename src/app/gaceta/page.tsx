@@ -1,4 +1,4 @@
-// src/app/gaceta/page.tsx
+﻿// src/app/gaceta/page.tsx
 'use client'
 
 import Link from 'next/link'
@@ -6,14 +6,15 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import {
   FileText, Calendar, Download, Eye,
-  Leaf, Wind, Droplets, ChevronRight,
+  Leaf, Wind, Droplets,
 } from 'lucide-react'
 import { getGacetaEventos, getContenido } from '@/services/ambientalService'
 import { GacetaType, PortadaType } from '@/app/types/ambiental.types'
 import Image from 'next/image'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 // ── Helpers ───────────────────────────────────────────────
-const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 const formatFecha = (fecha: string) => {
   if (!fecha) return ''
   const d = new Date(fecha)
@@ -136,31 +137,51 @@ const GacetaCard = ({ item, index }: { item: GacetaType; index: number }) => (
 
 // ══════════════════════════════════════════════════════════
 export default function GacetaPage() {
-  const [items, setItems]       = useState<GacetaType[]>([])
+  const [items, setItems] = useState<GacetaType[]>([])
   const [portadas, setPortadas] = useState<PortadaType[]>([])
-  const [loading, setLoading]   = useState(true)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([getGacetaEventos(), getContenido()])
-      .then(([gacetaData, contenidoData]) => {
+    const controller = new AbortController()
+    let isMounted = true
+
+    const fetchData = async () => {
+      try {
+        const [gacetaData, contenidoData] = await Promise.all([
+          getGacetaEventos(controller.signal),
+          getContenido(controller.signal),
+        ])
+        if (!isMounted) return
+
         const sorted = [...gacetaData.upea_gaceta_universitaria].sort(
           (a, b) => new Date(b.gaceta_fecha).getTime() - new Date(a.gaceta_fecha).getTime()
         )
         setItems(sorted)
         setPortadas(contenidoData.portada)
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+      } catch (error) {
+        if (isCancelledError(error)) return
+        console.error(error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [])
 
   return (
     <div className='min-h-screen bg-secondary dark:bg-darkmode overflow-x-hidden relative'>
 
       {/* Partículas */}
-      <EnvParticle icon={Leaf}     x='3%'  y='12%' delay={0}   size={32} />
-      <EnvParticle icon={Wind}     x='88%' y='20%' delay={1}   size={28} />
-      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2}   size={24} />
-      <EnvParticle icon={Leaf}     x='8%'  y='75%' delay={0.5} size={36} />
+      <EnvParticle icon={Leaf} x='3%' y='12%' delay={0} size={32} />
+      <EnvParticle icon={Wind} x='88%' y='20%' delay={1} size={28} />
+      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2} size={24} />
+      <EnvParticle icon={Leaf} x='8%' y='75%' delay={0.5} size={36} />
 
       {/* ── Hero ── */}
       <section className='relative h-72 md:h-80 lg:h-96 w-full overflow-hidden'>
@@ -218,7 +239,7 @@ export default function GacetaPage() {
               className='h-1 bg-primary rounded-full mx-auto'
             />
             <p className='text-gray-200 max-w-xl mx-auto text-base drop-shadow'>
-              Documentos y resoluciones oficiales — Ingeniería Ambiental UPEA
+              Documentos y resoluciones oficiales — Sociología UPEA
             </p>
           </motion.div>
         </div>

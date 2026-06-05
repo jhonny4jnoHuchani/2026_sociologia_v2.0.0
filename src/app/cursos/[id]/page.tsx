@@ -18,6 +18,7 @@ import {
   formatFechaLarga, formatHora,
   isActive, isUpcoming, getTypeStyle, SectionIn,
 } from '../_shared'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 // ── Partícula decorativa ──────────────────────────────────
 const EnvParticle = ({
@@ -57,24 +58,39 @@ const InfoRow = ({
 // PÁGINA DETALLE
 // ══════════════════════════════════════════════════════════
 export default function DetalleCursoPage() {
-  const params                  = useParams()
-  const id                      = Number(params.id)
-  const [item, setItem]         = useState<CursoType | null>(null)
-  const [loading, setLoading]   = useState(true)
+  const params = useParams()
+  const id = Number(params.id)
+  const [item, setItem] = useState<CursoType | null>(null)
+  const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
-    getGacetaEventos()
-      .then(data => {
-        //const found = data.cursos.find(c => c.iddetalle_cursos_academicos === id)
+    const controller = new AbortController()
+    let isMounted = true
+
+    const fetchData = async () => {
+      try {
+        const data = await getGacetaEventos(controller.signal)
+        if (!isMounted) return
+
         const found = data.cursos.find((c: CursoType) => c.iddetalle_cursos_academicos === id)
         if (found) setItem(found)
         else setNotFound(true)
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [id])
+      } catch (error) {
+        if (isCancelledError(error)) return
+        console.error(error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
 
+    fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
+  }, [id])
   // ── Loading ──
   if (loading) {
     return (
@@ -113,20 +129,20 @@ export default function DetalleCursoPage() {
     )
   }
 
-  const tipo      = item.tipo_curso_otro?.tipo_conv_curso_nombre ?? 'CURSOS'
+  const tipo = item.tipo_curso_otro?.tipo_conv_curso_nombre ?? 'CURSOS'
   const typeStyle = getTypeStyle(tipo)
-  const TypeIcon  = typeStyle.icon
-  const active    = isActive(item.det_fecha_ini, item.det_fecha_fin)
-  const upcoming  = isUpcoming(item.det_fecha_ini)
+  const TypeIcon = typeStyle.icon
+  const active = isActive(item.det_fecha_ini, item.det_fecha_fin)
+  const upcoming = isUpcoming(item.det_fecha_ini)
 
   return (
     <div className='min-h-screen bg-secondary dark:bg-darkmode overflow-x-hidden relative'>
 
       {/* Partículas */}
-      <EnvParticle icon={Leaf}     x='3%'  y='10%' delay={0}   size={32} />
-      <EnvParticle icon={Wind}     x='88%' y='20%' delay={1}   size={28} />
-      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2}   size={24} />
-      <EnvParticle icon={Leaf}     x='8%'  y='75%' delay={0.5} size={36} />
+      <EnvParticle icon={Leaf} x='3%' y='10%' delay={0} size={32} />
+      <EnvParticle icon={Wind} x='88%' y='20%' delay={1} size={28} />
+      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2} size={24} />
+      <EnvParticle icon={Leaf} x='8%' y='75%' delay={0.5} size={36} />
 
       <div className='container relative z-10 py-12'>
 
@@ -236,22 +252,22 @@ export default function DetalleCursoPage() {
                 <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 p-5 rounded-2xl
                                 bg-white dark:bg-lightdarkblue
                                 border border-darkblue/10 dark:border-white/10 shadow-sm mb-6'>
-                  <InfoRow icon={Calendar}     label='Fecha de inicio'  value={formatFechaLarga(item.det_fecha_ini)} />
-                  <InfoRow icon={CalendarDays} label='Fecha de fin'     value={formatFechaLarga(item.det_fecha_fin)} />
+                  <InfoRow icon={Calendar} label='Fecha de inicio' value={formatFechaLarga(item.det_fecha_ini)} />
+                  <InfoRow icon={CalendarDays} label='Fecha de fin' value={formatFechaLarga(item.det_fecha_fin)} />
                   {item.det_hora_ini && (
-                    <InfoRow icon={Clock}  label='Horario'        value={formatHora(item.det_hora_ini)} />
+                    <InfoRow icon={Clock} label='Horario' value={formatHora(item.det_hora_ini)} />
                   )}
                   {item.det_lugar_curso && (
-                    <InfoRow icon={MapPin} label='Lugar'          value={item.det_lugar_curso} />
+                    <InfoRow icon={MapPin} label='Lugar' value={item.det_lugar_curso} />
                   )}
                   {item.det_modalidad && (
-                    <InfoRow icon={Globe}  label='Modalidad'      value={item.det_modalidad} />
+                    <InfoRow icon={Globe} label='Modalidad' value={item.det_modalidad} />
                   )}
                   {item.det_carga_horaria > 0 && (
-                    <InfoRow icon={Timer}  label='Carga horaria'  value={`${item.det_carga_horaria} horas`} />
+                    <InfoRow icon={Timer} label='Carga horaria' value={`${item.det_carga_horaria} horas`} />
                   )}
                   {item.det_cupo_max > 0 && (
-                    <InfoRow icon={Users}  label='Cupo máximo'    value={`${item.det_cupo_max} participantes`} />
+                    <InfoRow icon={Users} label='Cupo máximo' value={`${item.det_cupo_max} participantes`} />
                   )}
                 </div>
               </SectionIn>
@@ -316,7 +332,7 @@ export default function DetalleCursoPage() {
                 <div className='flex items-center gap-3'>
                   <CheckCircle size={14} className='text-primary' />
                   <span className='text-xs text-lightgrey'>
-                    Publicado por Ingeniería Ambiental — UPEA
+                    Publicado por Sociología — UPEA
                   </span>
                 </div>
               </SectionIn>

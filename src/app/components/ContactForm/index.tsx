@@ -10,8 +10,9 @@ import {
 } from 'lucide-react'
 import { getGacetaEventos, getInstitucionPrincipal } from '@/services/ambientalService'
 import { CursoType, InstitucionType } from '@/app/types/ambiental.types'
+import { isCancelledError } from '@/utils/isCancelledError'
 
-const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
 const formatFecha = (fecha: string) => {
   if (!fecha) return ''
@@ -21,48 +22,59 @@ const formatFecha = (fecha: string) => {
 
 const getCursoStatus = (fechaInicio: string, fechaFin: string) => {
   if (!fechaInicio) return { text: '', icon: null, color: '' }
-  const hoy    = new Date(); hoy.setHours(0,0,0,0)
-  const inicio = new Date(fechaInicio); inicio.setHours(0,0,0,0)
-  const fin    = fechaFin ? new Date(fechaFin) : null
-  if (fin) fin.setHours(0,0,0,0)
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+  const inicio = new Date(fechaInicio); inicio.setHours(0, 0, 0, 0)
+  const fin = fechaFin ? new Date(fechaFin) : null
+  if (fin) fin.setHours(0, 0, 0, 0)
   const diffInicio = (inicio.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24)
 
   if (fin && hoy >= inicio && hoy <= fin)
-    return { text: 'EN CURSO',     icon: PlayCircle,   color: 'from-blue-500 to-indigo-600'   }
+    return { text: 'EN CURSO', icon: PlayCircle, color: 'from-blue-500 to-indigo-600' }
   if (diffInicio >= 0 && diffInicio <= 7)
-    return { text: 'PRÓXIMAMENTE', icon: CalendarDays, color: 'from-amber-500 to-orange-600'  }
+    return { text: 'PRÓXIMAMENTE', icon: CalendarDays, color: 'from-amber-500 to-orange-600' }
   if (diffInicio < 0 && diffInicio >= -2)
-    return { text: 'NUEVO',        icon: Zap,          color: 'from-emerald-500 to-green-600' }
+    return { text: 'NUEVO', icon: Zap, color: 'from-emerald-500 to-green-600' }
   return { text: '', icon: null, color: '' }
 }
 
 const ContactForm = () => {
-  const [cursos, setCursos]           = useState<CursoType[]>([])
+  const [cursos, setCursos] = useState<CursoType[]>([])
   const [institucion, setInstitucion] = useState<InstitucionType | null>(null)
-  const [loading, setLoading]         = useState(true)
+  const [loading, setLoading] = useState(true)
   const [hoveredCurso, setHoveredCurso] = useState<number | null>(null)
 
   useEffect(() => {
+    const controller = new AbortController()
+    let isMounted = true
+
     const fetchData = async () => {
       try {
         const [gacetaData, principalData] = await Promise.all([
-          getGacetaEventos(),
-          getInstitucionPrincipal(),
+          getGacetaEventos(controller.signal),
+          getInstitucionPrincipal(controller.signal),
         ])
+        if (!isMounted) return
         setCursos(gacetaData.cursos)
         setInstitucion(principalData.Descripcion)
       } catch (error) {
+        if (isCancelledError(error)) return
         console.error('Error fetching cursos:', error)
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     }
+
     fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [])
 
-  const primaryColor   = institucion?.colorinstitucion?.[0]?.color_primario   ?? '#4F8D40'
+  const primaryColor = institucion?.colorinstitucion?.[0]?.color_primario ?? '#4F8D40'
   const secondaryColor = institucion?.colorinstitucion?.[0]?.color_secundario ?? '#337a56'
-  const gradientStyle  = { background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }
+  const gradientStyle = { background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }
 
   const activos = cursos.filter(c => c.det_estado === '1')
   const latestCurso = activos
@@ -117,16 +129,16 @@ const ContactForm = () => {
           <div className='w-16 h-0.5 rounded-full mx-auto mb-3' style={gradientStyle} />
           <p className='text-base font-normal text-lightgrey max-w-xl mx-auto'>
             Capacitación y formación continua para profesionales y estudiantes de{' '}
-            {institucion?.institucion_nombre ?? 'Ingeniería Ambiental'}
+            {institucion?.institucion_nombre ?? 'Sociología'}
           </p>
         </motion.div>
 
         {/* Cards */}
         <div className='grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6'>
           {items.map((item, index) => {
-            const status     = getCursoStatus(item.det_fecha_ini, item.det_fecha_fin)
+            const status = getCursoStatus(item.det_fecha_ini, item.det_fecha_fin)
             const StatusIcon = status.icon
-            const isHovered  = hoveredCurso === item.iddetalle_cursos_academicos
+            const isHovered = hoveredCurso === item.iddetalle_cursos_academicos
 
             return (
               <motion.div

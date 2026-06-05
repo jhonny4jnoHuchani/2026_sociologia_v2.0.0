@@ -2,16 +2,22 @@
 
 import { useEffect } from 'react'
 import { getInstitucionPrincipal } from '@/services/ambientalService'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 export default function FaviconProvider() {
   useEffect(() => {
-    getInstitucionPrincipal()
-      .then(data => {
+    const controller = new AbortController()
+    let isMounted = true
+
+    const fetchData = async () => {
+      try {
+        const data = await getInstitucionPrincipal(controller.signal)
+        if (!isMounted) return
+        
         const logo = data?.Descripcion?.institucion_logo
         const nombre = data?.Descripcion?.institucion_nombre
         if (!logo) return
 
-        // Actualizar favicon
         const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
           ?? (() => {
             const el = document.createElement('link')
@@ -21,10 +27,19 @@ export default function FaviconProvider() {
           })()
         link.href = logo
 
-        // Actualizar título de la pestaña
         if (nombre) document.title = nombre
-      })
-      .catch(console.error)
+      } catch (error) {
+        if (isCancelledError(error)) return
+        console.error(error)
+      }
+    }
+
+    fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [])
 
   return null

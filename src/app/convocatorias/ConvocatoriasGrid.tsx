@@ -9,8 +9,9 @@ import { getGacetaEventos, getContenido } from '@/services/ambientalService'
 import { ConvocatoriaType, PortadaType } from '@/app/types/ambiental.types'
 import {
   TipoConvocatoria, formatFecha, isExpired, isActive,
-  getTypeStyle, filterByTipo, Chip, SectionIn, ConvocatoriasSkeleton,
+  getTypeStyle, filterByTipo, ConvocatoriasSkeleton,
 } from './_shared'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 // ── Partícula decorativa ──────────────────────────────────
 const EnvParticle = ({
@@ -31,17 +32,17 @@ const EnvParticle = ({
 // ── Título por tipo ───────────────────────────────────────
 const titleMap: Record<TipoConvocatoria, string> = {
   CONVOCATORIAS: 'Convocatorias',
-  COMUNICADOS:   'Comunicados',
-  AVISOS:        'Avisos',
+  COMUNICADOS: 'Comunicados',
+  AVISOS: 'Avisos',
 }
 
 // ── Card individual ───────────────────────────────────────
 const ConvocatoriaCard = ({ item, index }: { item: ConvocatoriaType; index: number }) => {
-  const tipo      = item.tipo_conv_comun?.tipo_conv_comun_titulo as TipoConvocatoria
+  const tipo = item.tipo_conv_comun?.tipo_conv_comun_titulo as TipoConvocatoria
   const typeStyle = getTypeStyle(tipo)
-  const TypeIcon  = typeStyle.icon
-  const expired   = isExpired(item.con_fecha_fin)
-  const active    = isActive(item.con_fecha_inicio, item.con_fecha_fin)
+  const TypeIcon = typeStyle.icon
+  const expired = isExpired(item.con_fecha_fin)
+  const active = isActive(item.con_fecha_inicio, item.con_fecha_fin)
 
   return (
     <motion.div
@@ -148,27 +149,47 @@ const ConvocatoriaCard = ({ item, index }: { item: ConvocatoriaType; index: numb
 // COMPONENTE PRINCIPAL REUTILIZABLE
 // ══════════════════════════════════════════════════════════
 export default function ConvocatoriasGrid({ tipo }: { tipo: TipoConvocatoria }) {
-  const [allItems, setAllItems]       = useState<ConvocatoriaType[]>([])
-  const [filtered, setFiltered]       = useState<ConvocatoriaType[]>([])
-  const [portadas, setPortadas]       = useState<PortadaType[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [search, setSearch]           = useState('')
+  const [allItems, setAllItems] = useState<ConvocatoriaType[]>([])
+  const [filtered, setFiltered] = useState<ConvocatoriaType[]>([])
+  const [portadas, setPortadas] = useState<PortadaType[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
   const [showActivos, setShowActivos] = useState(false)
 
-  const title     = titleMap[tipo]
+  const title = titleMap[tipo]
   const typeStyle = getTypeStyle(tipo)
-  const TypeIcon  = typeStyle.icon
+  const TypeIcon = typeStyle.icon
 
   useEffect(() => {
-    Promise.all([getGacetaEventos(), getContenido()])
-      .then(([gacetaData, contenidoData]) => {
+    const controller = new AbortController()
+    let isMounted = true
+
+    const fetchData = async () => {
+      try {
+        const [gacetaData, contenidoData] = await Promise.all([
+          getGacetaEventos(controller.signal),
+          getContenido(controller.signal),
+        ])
+        if (!isMounted) return
+
         const items = filterByTipo(gacetaData.convocatorias, tipo)
         setAllItems(items)
         setFiltered(items)
         setPortadas(contenidoData.portada)
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+      } catch (error) {
+        if (isCancelledError(error)) return
+        console.error(error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [tipo])
 
   // Filtros
@@ -178,7 +199,7 @@ export default function ConvocatoriasGrid({ tipo }: { tipo: TipoConvocatoria }) 
       const q = search.toLowerCase()
       result = result.filter(
         i => i.con_titulo.toLowerCase().includes(q) ||
-             i.con_descripcion?.toLowerCase().includes(q)
+          i.con_descripcion?.toLowerCase().includes(q)
       )
     }
     if (showActivos) {
@@ -191,10 +212,10 @@ export default function ConvocatoriasGrid({ tipo }: { tipo: TipoConvocatoria }) 
     <div className='min-h-screen bg-secondary dark:bg-darkmode overflow-x-hidden relative'>
 
       {/* Partículas decorativas */}
-      <EnvParticle icon={Leaf}     x='3%'  y='12%' delay={0}   size={32} />
-      <EnvParticle icon={Wind}     x='88%' y='20%' delay={1}   size={28} />
-      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2}   size={24} />
-      <EnvParticle icon={Leaf}     x='8%'  y='75%' delay={0.5} size={36} />
+      <EnvParticle icon={Leaf} x='3%' y='12%' delay={0} size={32} />
+      <EnvParticle icon={Wind} x='88%' y='20%' delay={1} size={28} />
+      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2} size={24} />
+      <EnvParticle icon={Leaf} x='8%' y='75%' delay={0.5} size={36} />
 
       {/* ── Hero con portada de fondo ── */}
       <section className='relative h-72 md:h-80 lg:h-96 w-full overflow-hidden'>
@@ -262,11 +283,11 @@ export default function ConvocatoriasGrid({ tipo }: { tipo: TipoConvocatoria }) 
             />
 
             <p className='text-gray-200 max-w-xl mx-auto text-base drop-shadow'>
-              Listado oficial de {title.toLowerCase()} de la Carrera de Ingeniería Ambiental — UPEA
+              Listado oficial de {title.toLowerCase()} de la Carrera de Sociología — UPEA
             </p>
           </motion.div>
 
-          
+
         </div>
       </section>
 

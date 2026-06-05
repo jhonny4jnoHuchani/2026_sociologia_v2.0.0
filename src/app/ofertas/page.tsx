@@ -1,4 +1,4 @@
-// RUTA: src/app/ofertas/page.tsx
+﻿// RUTA: src/app/ofertas/page.tsx
 'use client'
 
 import Image from 'next/image'
@@ -11,9 +11,10 @@ import {
 } from 'lucide-react'
 import { getGacetaEventos, getContenido } from '@/services/ambientalService'
 import { OfertaAcademicaType, PortadaType } from '@/app/types/ambiental.types'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 // ── Helpers ───────────────────────────────────────────────
-const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 const formatFecha = (fecha: string) => {
   if (!fecha) return ''
   const d = new Date(fecha)
@@ -59,13 +60,22 @@ const OfertasSkeleton = () => (
 
 // ══════════════════════════════════════════════════════════
 export default function OfertasPage() {
-  const [items, setItems]       = useState<OfertaAcademicaType[]>([])
+  const [items, setItems] = useState<OfertaAcademicaType[]>([])
   const [portadas, setPortadas] = useState<PortadaType[]>([])
-  const [loading, setLoading]   = useState(true)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([getGacetaEventos(), getContenido()])
-      .then(([gacetaData, contenidoData]) => {
+    const controller = new AbortController()
+    let isMounted = true
+
+    const fetchData = async () => {
+      try {
+        const [gacetaData, contenidoData] = await Promise.all([
+          getGacetaEventos(controller.signal),
+          getContenido(controller.signal),
+        ])
+        if (!isMounted) return
+
         const activas = [...gacetaData.ofertasAcademicas]
           .filter(o => o.ofertas_estado === 1)
           .sort((a, b) =>
@@ -74,19 +84,29 @@ export default function OfertasPage() {
           )
         setItems(activas)
         setPortadas(contenidoData.portada)
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
+      } catch (error) {
+        if (isCancelledError(error)) return
+        console.error(error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
 
+    fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
+  }, [])
   return (
     <div className='min-h-screen bg-secondary dark:bg-darkmode overflow-x-hidden relative'>
 
       {/* Partículas */}
-      <EnvParticle icon={Leaf}     x='3%'  y='12%' delay={0}   size={32} />
-      <EnvParticle icon={Wind}     x='88%' y='20%' delay={1}   size={28} />
-      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2}   size={24} />
-      <EnvParticle icon={Leaf}     x='8%'  y='75%' delay={0.5} size={36} />
+      <EnvParticle icon={Leaf} x='3%' y='12%' delay={0} size={32} />
+      <EnvParticle icon={Wind} x='88%' y='20%' delay={1} size={28} />
+      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2} size={24} />
+      <EnvParticle icon={Leaf} x='8%' y='75%' delay={0.5} size={36} />
 
       {/* ── Hero con portada de fondo ── */}
       <section className='relative h-72 md:h-80 lg:h-96 w-full overflow-hidden'>
@@ -148,7 +168,7 @@ export default function OfertasPage() {
             />
 
             <p className='text-gray-200 max-w-xl mx-auto text-base drop-shadow'>
-              Pasantías, diplomados y oportunidades académicas — Ingeniería Ambiental UPEA
+              Pasantías, diplomados y oportunidades académicas — Sociología UPEA
             </p>
           </motion.div>
         </div>
@@ -175,7 +195,7 @@ export default function OfertasPage() {
             <AnimatePresence>
               <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
                 {items.map((item, index) => {
-                  const active  = isActive(item.ofertas_inscripciones_ini, item.ofertas_inscripciones_fin)
+                  const active = isActive(item.ofertas_inscripciones_ini, item.ofertas_inscripciones_fin)
                   const expired = isExpired(item.ofertas_inscripciones_fin)
 
                   return (

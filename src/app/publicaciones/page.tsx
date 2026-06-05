@@ -1,4 +1,4 @@
-// RUTA: src/app/publicaciones/page.tsx
+﻿// RUTA: src/app/publicaciones/page.tsx
 'use client'
 
 import Image from 'next/image'
@@ -11,9 +11,10 @@ import {
 } from 'lucide-react'
 import { getRecursos, getContenido } from '@/services/ambientalService'
 import { PublicacionType, PortadaType } from '@/app/types/ambiental.types'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 // ── Helpers ───────────────────────────────────────────────
-const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 const formatFecha = (fecha: string) => {
   if (!fecha) return ''
   const d = new Date(fecha)
@@ -57,21 +58,41 @@ export default function PublicacionesPage() {
   const [allItems, setAllItems] = useState<PublicacionType[]>([])
   const [filtered, setFiltered] = useState<PublicacionType[]>([])
   const [portadas, setPortadas] = useState<PortadaType[]>([])
-  const [loading, setLoading]   = useState(true)
-  const [search, setSearch]     = useState('')
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
-    Promise.all([getRecursos(), getContenido()])
-      .then(([recursosData, contenidoData]) => {
+    const controller = new AbortController()
+    let isMounted = true
+
+    const fetchData = async () => {
+      try {
+        const [recursosData, contenidoData] = await Promise.all([
+          getRecursos(controller.signal),
+          getContenido(controller.signal),
+        ])
+        if (!isMounted) return
+
         const sorted = [...recursosData.upea_publicaciones].sort(
           (a, b) => new Date(b.publicaciones_fecha).getTime() - new Date(a.publicaciones_fecha).getTime()
         )
         setAllItems(sorted)
         setFiltered(sorted)
         setPortadas(contenidoData.portada)
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+      } catch (error) {
+        if (isCancelledError(error)) return
+        console.error(error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [])
 
   // Filtro por búsqueda
@@ -84,8 +105,8 @@ export default function PublicacionesPage() {
     setFiltered(
       allItems.filter(
         i => i.publicaciones_titulo.toLowerCase().includes(q) ||
-             i.publicaciones_descripcion?.toLowerCase().includes(q) ||
-             i.publicaciones_autor?.toLowerCase().includes(q)
+          i.publicaciones_descripcion?.toLowerCase().includes(q) ||
+          i.publicaciones_autor?.toLowerCase().includes(q)
       )
     )
   }, [search, allItems])
@@ -94,10 +115,10 @@ export default function PublicacionesPage() {
     <div className='min-h-screen bg-secondary dark:bg-darkmode overflow-x-hidden relative'>
 
       {/* Partículas */}
-      <EnvParticle icon={Leaf}     x='3%'  y='12%' delay={0}   size={32} />
-      <EnvParticle icon={Wind}     x='88%' y='20%' delay={1}   size={28} />
-      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2}   size={24} />
-      <EnvParticle icon={Leaf}     x='8%'  y='75%' delay={0.5} size={36} />
+      <EnvParticle icon={Leaf} x='3%' y='12%' delay={0} size={32} />
+      <EnvParticle icon={Wind} x='88%' y='20%' delay={1} size={28} />
+      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2} size={24} />
+      <EnvParticle icon={Leaf} x='8%' y='75%' delay={0.5} size={36} />
 
       {/* ── Hero con portada de fondo ── */}
       <section className='relative h-72 md:h-80 lg:h-96 w-full overflow-hidden'>
@@ -159,7 +180,7 @@ export default function PublicacionesPage() {
             />
 
             <p className='text-gray-200 max-w-xl mx-auto text-base drop-shadow'>
-              Noticias y publicaciones de la Carrera de Ingeniería Ambiental — UPEA
+              Noticias y publicaciones de la Carrera de Sociología — UPEA
             </p>
           </motion.div>
         </div>

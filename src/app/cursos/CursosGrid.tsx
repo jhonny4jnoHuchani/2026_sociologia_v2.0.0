@@ -1,4 +1,4 @@
-// RUTA: src/app/cursos/CursosGrid.tsx
+﻿// RUTA: src/app/cursos/CursosGrid.tsx
 'use client'
 
 import Image from 'next/image'
@@ -14,8 +14,9 @@ import { CursoType, PortadaType } from '@/app/types/ambiental.types'
 import {
   TipoCurso, formatFecha, formatHora,
   isExpired, isActive, isUpcoming,
-  getTypeStyle, filterByTipo, Chip, CursosSkeleton,
+  getTypeStyle, filterByTipo, CursosSkeleton,
 } from './_shared'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 // ── Partícula decorativa ──────────────────────────────────
 const EnvParticle = ({
@@ -34,18 +35,18 @@ const EnvParticle = ({
 )
 
 const titleMap: Record<TipoCurso, string> = {
-  CURSOS:     'Cursos',
+  CURSOS: 'Cursos',
   SEMINARIOS: 'Seminarios',
 }
 
 // ── Card ──────────────────────────────────────────────────
 const CursoCard = ({ item, index }: { item: CursoType; index: number }) => {
-  const tipo      = item.tipo_curso_otro?.tipo_conv_curso_nombre as TipoCurso
+  const tipo = item.tipo_curso_otro?.tipo_conv_curso_nombre as TipoCurso
   const typeStyle = getTypeStyle(tipo)
-  const TypeIcon  = typeStyle.icon
-  const expired   = isExpired(item.det_fecha_fin)
-  const active    = isActive(item.det_fecha_ini, item.det_fecha_fin)
-  const upcoming  = isUpcoming(item.det_fecha_ini)
+  const TypeIcon = typeStyle.icon
+  const expired = isExpired(item.det_fecha_fin)
+  const active = isActive(item.det_fecha_ini, item.det_fecha_fin)
+  const upcoming = isUpcoming(item.det_fecha_ini)
 
   return (
     <motion.div
@@ -171,25 +172,44 @@ const CursoCard = ({ item, index }: { item: CursoType; index: number }) => {
 // COMPONENTE PRINCIPAL
 // ══════════════════════════════════════════════════════════
 export default function CursosGrid({ tipo }: { tipo: TipoCurso }) {
-  const [allItems, setAllItems]       = useState<CursoType[]>([])
-  const [filtered, setFiltered]       = useState<CursoType[]>([])
-  const [portadas, setPortadas]       = useState<PortadaType[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [search, setSearch]           = useState('')
+  const [allItems, setAllItems] = useState<CursoType[]>([])
+  const [filtered, setFiltered] = useState<CursoType[]>([])
+  const [portadas, setPortadas] = useState<PortadaType[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
   const [soloActivos, setSoloActivos] = useState(false)
 
-  const title     = titleMap[tipo]
+  const title = titleMap[tipo]
   const typeStyle = getTypeStyle(tipo)
-  const TypeIcon  = typeStyle.icon
+  const TypeIcon = typeStyle.icon
 
   useEffect(() => {
-    Promise.all([getGacetaEventos(), getContenido()])
-      .then(([gacetaData, contenidoData]) => {
+    const controller = new AbortController()
+    let isMounted = true
+
+    const fetchData = async () => {
+      try {
+        const [gacetaData, contenidoData] = await Promise.all([
+          getGacetaEventos(controller.signal),
+          getContenido(controller.signal),
+        ])
+        if (!isMounted) return
         setAllItems(filterByTipo(gacetaData.cursos, tipo))
         setPortadas(contenidoData.portada)
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+      } catch (error) {
+        if (isCancelledError(error)) return
+        console.error(error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    fetchData()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [tipo])
 
   // Filtros reactivos
@@ -199,7 +219,7 @@ export default function CursosGrid({ tipo }: { tipo: TipoCurso }) {
       const q = search.toLowerCase()
       result = result.filter(
         i => i.det_titulo.toLowerCase().includes(q) ||
-             i.det_descripcion?.toLowerCase().includes(q)
+          i.det_descripcion?.toLowerCase().includes(q)
       )
     }
     if (soloActivos) {
@@ -212,10 +232,10 @@ export default function CursosGrid({ tipo }: { tipo: TipoCurso }) {
     <div className='min-h-screen bg-secondary dark:bg-darkmode overflow-x-hidden relative'>
 
       {/* Partículas */}
-      <EnvParticle icon={Leaf}     x='3%'  y='12%' delay={0}   size={32} />
-      <EnvParticle icon={Wind}     x='88%' y='20%' delay={1}   size={28} />
-      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2}   size={24} />
-      <EnvParticle icon={Leaf}     x='8%'  y='75%' delay={0.5} size={36} />
+      <EnvParticle icon={Leaf} x='3%' y='12%' delay={0} size={32} />
+      <EnvParticle icon={Wind} x='88%' y='20%' delay={1} size={28} />
+      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2} size={24} />
+      <EnvParticle icon={Leaf} x='8%' y='75%' delay={0.5} size={36} />
 
       {/* ── Hero con portada de fondo ── */}
       <section className='relative h-72 md:h-80 lg:h-96 w-full overflow-hidden'>
@@ -277,7 +297,7 @@ export default function CursosGrid({ tipo }: { tipo: TipoCurso }) {
             />
 
             <p className='text-gray-200 max-w-xl mx-auto text-base drop-shadow'>
-              Formación continua para profesionales y estudiantes — Ingeniería Ambiental UPEA
+              Formación continua para profesionales y estudiantes — Sociología UPEA
             </p>
           </motion.div>
 

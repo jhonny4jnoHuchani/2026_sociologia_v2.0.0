@@ -1,14 +1,15 @@
-'use client'
+﻿'use client'
 
 import Image from 'next/image'
 import { useEffect, useState, useRef } from 'react'
 import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react'
-import { Phone, User, Sparkles, ChevronRight, Quote, Star, Crown, Shield } from 'lucide-react'
-import { FaFacebook, FaWhatsapp } from 'react-icons/fa'
+import { Phone, User, Sparkles, Quote, Star, Crown, Shield } from 'lucide-react'
+import { FaFacebook } from 'react-icons/fa'
 import { useTheme } from 'next-themes'
 import { getContenido, getInstitucionPrincipal } from '@/services/ambientalService'
 import { AutoridadType, InstitucionType } from '@/app/types/ambiental.types'
 import CategorySkeleton from '../../Skeleton/Category'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 const Category = () => {
   const [autoridades, setAutoridades] = useState<AutoridadType[]>([])
@@ -22,24 +23,34 @@ const Category = () => {
   const y = useTransform(scrollYProgress, [0, 1], [0, 100])
   const opacity = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0])
 
+
+
   useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
+    const controller = new AbortController()
+    let isMounted = true
     const fetchData = async () => {
       try {
         const [contenidoData, principalData] = await Promise.all([
-          getContenido(),
-          getInstitucionPrincipal(),
+          getContenido(controller.signal),
+          getInstitucionPrincipal(controller.signal),
         ])
+        if (!isMounted) return
         setAutoridades(contenidoData.autoridad)
         setInstitucion(principalData.Descripcion)
       } catch (error) {
+        if (isCancelledError(error)) return  // ignorar errores de cancelación
         console.error('Error fetching autoridades:', error)
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     }
     fetchData()
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [])
 
   const primaryColor = institucion?.colorinstitucion?.[0]?.color_primario ?? '#4F8D40'
@@ -187,7 +198,7 @@ const Category = () => {
           >
             Conoce a los profesionales que lideran la carrera de{' '}
             <span className='font-semibold' style={{ color: primaryColor }}>
-              {institucion?.institucion_nombre ?? 'Ingeniería Ambiental'}
+              {institucion?.institucion_nombre ?? 'Sociología'}
             </span>
           </motion.p>
 

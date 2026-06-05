@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Image from 'next/image'
 import Link from 'next/link'
@@ -7,45 +7,58 @@ import { motion } from 'motion/react'
 import { Icon } from '@iconify/react'
 import { getInstitucionPrincipal } from '@/services/ambientalService'
 import { InstitucionType } from '@/app/types/ambiental.types'
-
+import { isCancelledError } from '@/utils/isCancelledError'
+import { useRouter } from 'next/navigation'
 const quickLinks = [
   {
     section: 'Carrera',
     links: [
-      { label: 'Publicaciones', href: '/#publicaciones' },
-      { label: 'Convocatorias', href: '/#convocatorias' },
-      { label: 'Cursos', href: '/#cursos' },
-      { label: 'Eventos', href: '/#eventos' },
+      { label: 'Publicaciones', href: 'publicaciones' },
+      { label: 'Convocatorias', href: '/convocatorias' },
+      { label: 'Cursos', href: '/cursos' },
+      { label: 'Eventos', href: '/eventos' },
     ],
   },
   {
     section: 'Recursos',
     links: [
-      { label: 'Servicios', href: '/#servicios' },
-      { label: 'Gaceta', href: '/#gaceta' },
-      { label: 'Videos', href: '/#videos' },
-      { label: 'Ofertas', href: '/#ofertas' },
+      { label: 'Servicios', href: '/servicios' },
+      { label: 'Gaceta', href: '/gaceta' },
+      { label: 'Videos', href: '/videos' },
+      { label: 'Ofertas', href: '/ofertas' },
     ],
   },
 ]
 
 const Footer = () => {
+  const router = useRouter()
   const [institucion, setInstitucion] = useState<InstitucionType | null>(null)
   const [loading, setLoading] = useState(true)
-
+  //agregado el cancelar antes de retirar
   useEffect(() => {
+    const controller = new AbortController()
+    let isMounted = true
+
     const fetchData = async () => {
       try {
-        const data = await getInstitucionPrincipal()
+        const data = await getInstitucionPrincipal(controller.signal)
+        if (!isMounted) return
         setInstitucion(data.Descripcion)
       } catch (error) {
-        console.error('Error fetching footer data:', error)
+        if (isCancelledError(error)) return   // petición cancelada, no hacer nada
+        router.push('/manteniemiento')  // redirigir a página de error para cualquier otro tipo de error
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     }
+
     fetchData()
-  }, [])
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
+  }, [router])
 
   const primaryColor = institucion?.colorinstitucion?.[0]?.color_primario ?? '#4F8D40'
 
@@ -120,7 +133,7 @@ const Footer = () => {
             ) : null}
             <div>
               <p className='text-darkblue dark:text-white font-semibold text-sm'>
-                {loading ? '...' : institucion?.institucion_nombre ?? 'Ingeniería Ambiental'}
+                {loading ? '...' : institucion?.institucion_nombre ?? 'Sociología'}
               </p>
               <p className='text-lightgrey text-xs'>Universidad Pública de El Alto</p>
             </div>
@@ -215,7 +228,7 @@ const Footer = () => {
           >
             <div>
               <p className='text-darkblue dark:text-white text-xl font-bold mb-0.5'>
-                {loading ? '...' : institucion?.institucion_nombre ?? 'Ingeniería Ambiental'}
+                {loading ? '...' : institucion?.institucion_nombre ?? 'Sociología'}
               </p>
               <p className='text-lightgrey text-sm'>Universidad Pública de El Alto</p>
               <div

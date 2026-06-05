@@ -10,6 +10,7 @@ import ProjectSkeleton from '../../Skeleton/Project'
 import { getRecursos, getInstitucionPrincipal } from '@/services/ambientalService'
 import { LinkExternoType } from '@/app/types/ambiental.types'
 import { InstitucionType } from '@/app/types/ambiental.types'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 const LinkCard = ({ item }: { item: LinkExternoType }) => (
   <div className='p-1'>
@@ -51,23 +52,33 @@ const Project = () => {
   const [loading, setLoading] = useState(true)
   const [institucion, setInstitucion] = useState<InstitucionType | null>(null)
 
+
   useEffect(() => {
+    const controller = new AbortController()
+    let isMounted = true
     const fetchData = async () => {
       try {
         const [data, principalData] = await Promise.all([
-          getRecursos(),
-          getInstitucionPrincipal(),
+          getRecursos(controller.signal),
+          getInstitucionPrincipal(controller.signal),
         ])
+        if (!isMounted) return
         setLinks(data.linksExternoInterno.filter((l: LinkExternoType) => l.estado === 1))
         setInstitucion(principalData.Descripcion)
       } catch (error) {
+        if (isCancelledError(error)) return
         console.error('Error fetching links:', error)
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     }
     fetchData()
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [])
+
 
   const settings = {
     dots: true,
@@ -105,11 +116,11 @@ const Project = () => {
             <Slider {...settings}>
               {loading
                 ? Array.from({ length: 3 }).map((_, i) => (
-                    <ProjectSkeleton key={i} />
-                  ))
+                  <ProjectSkeleton key={i} />
+                ))
                 : links.map((item) => (
-                    <LinkCard key={item.id_link} item={item} />
-                  ))}
+                  <LinkCard key={item.id_link} item={item} />
+                ))}
             </Slider>
           </div>
 

@@ -11,11 +11,12 @@ import { MapPin, Phone, Mail, Clock, ExternalLink, Leaf, Wind, Droplets } from '
 import { getInstitucionPrincipal, getContenido } from '@/services/ambientalService'
 import { InstitucionType, PortadaType } from '@/app/types/ambiental.types'
 import 'leaflet/dist/leaflet.css'
+import { isCancelledError } from '@/utils/isCancelledError'
 
 const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContainer), { ssr: false })
-const TileLayer    = dynamic(() => import('react-leaflet').then(m => m.TileLayer),    { ssr: false })
-const Marker       = dynamic(() => import('react-leaflet').then(m => m.Marker),       { ssr: false })
-const Popup        = dynamic(() => import('react-leaflet').then(m => m.Popup),        { ssr: false })
+const TileLayer = dynamic(() => import('react-leaflet').then(m => m.TileLayer), { ssr: false })
+const Marker = dynamic(() => import('react-leaflet').then(m => m.Marker), { ssr: false })
+const Popup = dynamic(() => import('react-leaflet').then(m => m.Popup), { ssr: false })
 
 const CACHE_TTL = 30 * 24 * 60 * 60 * 1000
 
@@ -158,26 +159,39 @@ const ContactCard = ({ icon: Icon, title, content, color, delay = 0, cardBg }: {
 
 export default function ContactoPage() {
   const [institucion, setInstitucion] = useState<InstitucionType | null>(null)
-  const [portadas, setPortadas]       = useState<PortadaType[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [mounted, setMounted]         = useState(false)
-  const { theme }                     = useTheme()
+  const [portadas, setPortadas] = useState<PortadaType[]>([])
+  const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
+  const { theme } = useTheme()
 
   const DEFAULT_COORDS: [number, number] = [-16.5009, -68.1503]
   const [mapPosition, setMapPosition] = useState<[number, number]>(DEFAULT_COORDS)
-  const [mapLoading, setMapLoading]   = useState(true)
+  const [mapLoading, setMapLoading] = useState(true)
   const [leafletReady, setLeafletReady] = useState(false)
+
 
   useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
-    Promise.all([getInstitucionPrincipal(), getContenido()])
+    const controller = new AbortController()
+    let isMounted = true
+
+    Promise.all([
+      getInstitucionPrincipal(controller.signal),
+      getContenido(controller.signal)
+    ])
       .then(([principal, contenido]) => {
+        if (!isMounted) return
         setInstitucion(principal.Descripcion)
         setPortadas(contenido.portada)
       })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+      .catch((error) => {
+        if (isCancelledError(error)) return
+        console.error('Error fetching contact data:', error)
+      })
+      .finally(() => { if (isMounted) setLoading(false) })
+
+    return () => { isMounted = false; controller.abort() }
   }, [])
 
   useEffect(() => {
@@ -187,8 +201,8 @@ export default function ContactoPage() {
     delete L.Icon.Default.prototype._getIconUrl
     L.Icon.Default.mergeOptions({
       iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-      iconUrl:       'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-      shadowUrl:     'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
     })
     setLeafletReady(true)
   }, [])
@@ -206,26 +220,44 @@ export default function ContactoPage() {
       return
     }
 
+    const controller = new AbortController()
+    let isMounted = true
+
     fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(direccion)}&format=json&limit=1`,
-      { headers: { 'Accept-Language': 'es' } }
+      {
+        headers: {
+          'Accept-Language': 'es',
+          'User-Agent': 'SociologiaUPEA/1.0 (contacto@upea.edu.bo)'
+        },
+        signal: controller.signal
+      }
     )
-      .then(r => r.json())
-      .then(data => {
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`Nominatim error: ${r.status}`)
+        return r.json()
+      })
+      .then((data) => {
+        if (!isMounted) return
         if (data?.[0]) {
           const coords: [number, number] = [parseFloat(data[0].lat), parseFloat(data[0].lon)]
           setMapPosition(coords)
           setCachedCoords(direccion, coords)
         }
       })
-      .catch(e => console.error('Error geocodificando:', e))
-      .finally(() => setMapLoading(false))
+      .catch((error) => {
+        if (isCancelledError(error)) return
+        console.error('Error geocodificando:', error)
+      })
+      .finally(() => { if (isMounted) setMapLoading(false) })
+
+    return () => { isMounted = false; controller.abort() }
   }, [institucion, loading])
 
-  const primaryColor   = institucion?.colorinstitucion?.[0]?.color_primario   ?? '#4F8D40'
+  const primaryColor = institucion?.colorinstitucion?.[0]?.color_primario ?? '#4F8D40'
   const secondaryColor = institucion?.colorinstitucion?.[0]?.color_secundario ?? '#337a56'
-  const isDark         = mounted && theme === 'dark'
-  const cardBg         = isDark ? 'var(--color-header-dark)' : '#ffffff'
+  const isDark = mounted && theme === 'dark'
+  const cardBg = isDark ? 'var(--color-header-dark)' : '#ffffff'
 
   if (loading) {
     return (
@@ -246,12 +278,12 @@ export default function ContactoPage() {
     <div className='min-h-screen bg-secondary dark:bg-darkmode overflow-x-hidden relative'>
 
       {/* Partículas */}
-      <EnvParticle icon={Leaf}     x='3%'  y='10%' delay={0}   size={32} color={primaryColor}   />
-      <EnvParticle icon={Wind}     x='88%' y='20%' delay={1}   size={28} color={secondaryColor}  />
-      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2}   size={24} color={primaryColor}    />
-      <EnvParticle icon={Leaf}     x='8%'  y='75%' delay={0.5} size={36} color={secondaryColor}  />
-      <EnvParticle icon={Wind}     x='12%' y='40%' delay={1.5} size={20} color={primaryColor}    />
-      <EnvParticle icon={Droplets} x='72%' y='45%' delay={3}   size={26} color={secondaryColor}  />
+      <EnvParticle icon={Leaf} x='3%' y='10%' delay={0} size={32} color={primaryColor} />
+      <EnvParticle icon={Wind} x='88%' y='20%' delay={1} size={28} color={secondaryColor} />
+      <EnvParticle icon={Droplets} x='82%' y='65%' delay={2} size={24} color={primaryColor} />
+      <EnvParticle icon={Leaf} x='8%' y='75%' delay={0.5} size={36} color={secondaryColor} />
+      <EnvParticle icon={Wind} x='12%' y='40%' delay={1.5} size={20} color={primaryColor} />
+      <EnvParticle icon={Droplets} x='72%' y='45%' delay={3} size={26} color={secondaryColor} />
 
       {/* HERO */}
       <section className='relative h-72 md:h-80 lg:h-96 w-full overflow-hidden'>
@@ -440,7 +472,7 @@ export default function ContactoPage() {
                   />
                   <Marker position={mapPosition}>
                     <Popup>
-                      <strong>{institucion?.institucion_nombre ?? 'Ingeniería Ambiental'}</strong>
+                      <strong>{institucion?.institucion_nombre ?? 'Sociología'}</strong>
                       <br />
                       {institucion?.institucion_direccion}
                     </Popup>
