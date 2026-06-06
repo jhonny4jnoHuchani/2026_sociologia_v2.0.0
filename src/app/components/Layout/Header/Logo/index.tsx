@@ -56,7 +56,7 @@ const Logo = () => {
             width={40}
             height={40}
             className='rounded-full object-contain flex-shrink-0 border-2'
-            style={{ borderColor: `${primaryColor}40` }}
+            style={{ borderColor: `${primaryColor}40`, height: 'auto' }} 
             priority
           />
         ) : (

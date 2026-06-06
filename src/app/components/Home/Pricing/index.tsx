@@ -20,34 +20,34 @@ const Pricing = () => {
   const opacity = useTransform(scrollYProgress, [0, 0.3], [1, 0.8])
   const scale = useTransform(scrollYProgress, [0, 0.3], [1, 0.97])
 
-useEffect(() => {
-  setMounted(true)
-}, [])
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
-useEffect(() => {
-  const controller = new AbortController()
-  let isMounted = true
+  useEffect(() => {
+    const controller = new AbortController()
+    let isMounted = true
 
-  const fetchData = async () => {
-    try {
-      const data = await getInstitucionPrincipal(controller.signal)
-      if (!isMounted) return
-      setInstitucion(data.Descripcion)
-    } catch (error) {
-      if (isCancelledError(error)) return
-      console.error('Error fetching VideoVision:', error)
-    } finally {
-      if (isMounted) setLoading(false)
+    const fetchData = async () => {
+      try {
+        const data = await getInstitucionPrincipal(controller.signal)
+        if (!isMounted) return
+        setInstitucion(data.Descripcion)
+      } catch (error) {
+        if (isCancelledError(error)) return
+        console.error('Error fetching VideoVision:', error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
     }
-  }
 
-  fetchData()
+    fetchData()
 
-  return () => {
-    isMounted = false
-    controller.abort()
-  }
-}, [])
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
+  }, [])
 
   const currentTheme = mounted ? (theme === 'system' ? systemTheme : theme) : 'light'
   const isDark = currentTheme === 'dark'
@@ -55,7 +55,18 @@ useEffect(() => {
   const primaryColor = institucion?.colorinstitucion?.[0]?.color_primario ?? '#4F8D40'
   const secondaryColor = institucion?.colorinstitucion?.[0]?.color_secundario ?? '#337a56'
   const tertiaryColor = institucion?.colorinstitucion?.[0]?.color_terciario ?? '#2d6a4f'
-  const videoUrl = institucion?.institucion_link_video_vision
+  const getEmbedUrl = (url: string): string => {
+    if (!url) return ''
+    const watchMatch = url.match(/youtube\.com\/watch\?v=([^&]+)/)
+    if (watchMatch) return `https://www.youtube-nocookie.com/embed/${watchMatch[1]}`
+    const shortMatch = url.match(/youtu\.be\/([^?]+)/)
+    if (shortMatch) return `https://www.youtube-nocookie.com/embed/${shortMatch[1]}`
+    const embedMatch = url.match(/youtube\.com\/embed\/([^?]+)/)
+    if (embedMatch) return `https://www.youtube-nocookie.com/embed/${embedMatch[1]}`
+    return url
+  }
+
+  const videoUrl = getEmbedUrl(institucion?.institucion_link_video_vision ?? '')
 
 
   if (loading) {
@@ -78,18 +89,17 @@ useEffect(() => {
   if (!videoUrl) return null
 
   return (
-    <motion.section 
-      id='pricing' 
+    <motion.section
+      id='pricing'
       style={{ opacity, scale }}
       className='relative py-12 sm:py-16 lg:py-20 overflow-hidden scroll-mt-12'
     >
       {/* ─── FONDO PRINCIPAL CON SOPORTE CLARO/OSCURO ───────────────────────── */}
-      <div className={`absolute inset-0 transition-colors duration-300 ${
-        isDark 
-          ? 'bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950' 
+      <div className={`absolute inset-0 transition-colors duration-300 ${isDark
+          ? 'bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950'
           : 'bg-gradient-to-br from-gray-50 via-white to-gray-100'
-      }`} />
-      
+        }`} />
+
       {/* Efecto de textura / ruido */}
       <div className='absolute inset-0 opacity-[0.03] pointer-events-none bg-[url("data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noise"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noise)"/%3E%3C/svg%3E")]' />
 
@@ -134,7 +144,7 @@ useEffect(() => {
 
       <div className='relative container mx-auto px-4'>
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 xl:gap-16 items-center'>
-          
+
           {/* ─── COLUMNA IZQUIERDA: TEXTO ────────────────────────────────────── */}
           <motion.div
             initial={{ opacity: 0, x: -50 }}
@@ -149,11 +159,10 @@ useEffect(() => {
               whileInView={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.2, duration: 0.5 }}
               viewport={{ once: true }}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm border shadow-lg ${
-                isDark 
-                  ? 'bg-white/5 border-white/10' 
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm border shadow-lg ${isDark
+                  ? 'bg-white/5 border-white/10'
                   : 'bg-black/5 border-gray-200'
-              }`}
+                }`}
             >
               <motion.div
                 animate={{ scale: [1, 1.2, 1], rotate: [0, 10, 0] }}
@@ -240,7 +249,7 @@ useEffect(() => {
               className='flex flex-wrap gap-4 pt-2'
             >
               <motion.a
-                href='#convocatorias'
+                href='/convocatorias'
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className='relative group px-6 py-2.5 rounded-full font-semibold text-white overflow-hidden shadow-lg'
@@ -254,14 +263,13 @@ useEffect(() => {
               </motion.a>
 
               <motion.a
-                href='#cursos'
+                href='/cursos'
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className={`px-6 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 shadow-lg ${
-                  isDark 
-                    ? 'text-white bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20' 
+                className={`px-6 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 shadow-lg ${isDark
+                    ? 'text-white bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20'
                     : 'text-gray-800 bg-black/5 backdrop-blur-sm border border-gray-200 hover:bg-black/10'
-                }`}
+                  }`}
               >
                 Explorar Cursos
               </motion.a>
@@ -300,11 +308,10 @@ useEffect(() => {
               </div>
 
               {/* Contenedor del video */}
-              <div className={`relative rounded-xl overflow-hidden shadow-2xl backdrop-blur-sm border ${
-                isDark 
-                  ? 'bg-black/50 border-white/20' 
+              <div className={`relative rounded-xl overflow-hidden shadow-2xl backdrop-blur-sm border ${isDark
+                  ? 'bg-black/50 border-white/20'
                   : 'bg-white/50 border-gray-200'
-              }`}>
+                }`}>
                 <div className='relative w-full' style={{ aspectRatio: '16/9' }}>
                   <iframe
                     src={videoUrl}
@@ -314,20 +321,20 @@ useEffect(() => {
                     className='absolute inset-0 w-full h-full'
                     style={{ border: 0 }}
                   />
-                  
+
                   {/* Overlay de gradiente en el video */}
                   <div className='absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none' />
-                  
+
                   {/* Controles flotantes del video */}
                   <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
                     <div className='flex items-center gap-3'>
-                      <button 
+                      <button
                         onClick={() => setIsPlaying(!isPlaying)}
                         className='p-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors'
                       >
                         {isPlaying ? <Pause size={16} className='text-white' /> : <Play size={16} className='text-white' />}
                       </button>
-                      <button 
+                      <button
                         onClick={() => setIsMuted(!isMuted)}
                         className='p-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors'
                       >
@@ -348,11 +355,10 @@ useEffect(() => {
               <motion.div
                 animate={{ y: [0, -5, 0] }}
                 transition={{ duration: 2, repeat: Infinity }}
-                className={`absolute -bottom-2 -right-2 backdrop-blur-md rounded-full px-3 py-1.5 border shadow-lg ${
-                  isDark 
-                    ? 'bg-white/10 border-white/20' 
+                className={`absolute -bottom-2 -right-2 backdrop-blur-md rounded-full px-3 py-1.5 border shadow-lg ${isDark
+                    ? 'bg-white/10 border-white/20'
                     : 'bg-white/80 border-gray-200'
-                }`}
+                  }`}
               >
                 <div className='flex items-center gap-1.5'>
                   <Eye size={12} style={{ color: primaryColor }} />

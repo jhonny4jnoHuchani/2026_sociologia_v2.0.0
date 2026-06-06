@@ -69,12 +69,15 @@ const ItemCard = ({
         {/* Imagen */}
         <div className='relative h-44 overflow-hidden bg-gray-100 dark:bg-darklight'>
           {item?.imagen ? (
+
             <Image
               src={item.imagen}
               alt={item.titulo}
               fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               className='object-cover group-hover:scale-110 transition-transform duration-700'
             />
+
           ) : (
             <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${col.gradient} opacity-20`}>
               <Icon size={48} className='text-white opacity-60' />

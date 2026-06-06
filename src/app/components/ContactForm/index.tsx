@@ -162,6 +162,7 @@ const ContactForm = () => {
                         src={item.det_img_portada}
                         alt={item.det_titulo}
                         fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         className='object-cover group-hover:scale-105 transition-transform duration-500'
                       />
                     ) : (
@@ -283,7 +284,7 @@ const ContactForm = () => {
           className='text-center mt-8'
         >
           <Link
-            href='/#cursos'
+            href='/cursos'
             className='inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 group border'
             style={{
               backgroundColor: `color-mix(in srgb, ${primaryColor} 10%, transparent)`,

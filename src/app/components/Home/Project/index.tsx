@@ -26,7 +26,8 @@ const LinkCard = ({ item }: { item: LinkExternoType }) => (
           alt={item.nombre}
           width={234}
           height={160}
-          className='w-full h-full object-cover'
+          className='w-full object-cover'
+          style={{ height: '160px' }}  // ← debe estar esto
         />
       </div>
       <div className='flex items-center gap-2'>

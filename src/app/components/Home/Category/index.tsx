@@ -250,12 +250,14 @@ const Category = () => {
                       <motion.div
                         animate={{ scale: hoveredId === aut.id_autoridad ? 1.08 : 1 }}
                         transition={{ duration: 0.5 }}
-                        className='w-full h-full'
+                        className='relative w-full h-full'
                       >
                         <Image
                           src={aut.foto_autoridad}
                           alt={aut.nombre_autoridad}
                           fill
+                          sizes="(max-width: 1024px) 50vw, 25vw"
+                          priority={i === 0}
                           className='object-cover object-top'
                         />
                       </motion.div>

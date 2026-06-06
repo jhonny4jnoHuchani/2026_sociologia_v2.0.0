@@ -4,11 +4,14 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
-import { Icon } from '@iconify/react'
+import { MapPin, Phone, Mail, Send } from 'lucide-react'
+import { FaFacebook, FaYoutube } from 'react-icons/fa'
+
 import { getInstitucionPrincipal } from '@/services/ambientalService'
 import { InstitucionType } from '@/app/types/ambiental.types'
 import { isCancelledError } from '@/utils/isCancelledError'
 import { useRouter } from 'next/navigation'
+
 const quickLinks = [
   {
     section: 'Carrera',
@@ -46,7 +49,7 @@ const Footer = () => {
         setInstitucion(data.Descripcion)
       } catch (error) {
         if (isCancelledError(error)) return   // petición cancelada, no hacer nada
-        router.push('/manteniemiento')  // redirigir a página de error para cualquier otro tipo de error
+        router.push('/mantenimiento')  // redirigir a página de error para cualquier otro tipo de error
       } finally {
         if (isMounted) setLoading(false)
       }
@@ -250,7 +253,7 @@ const Footer = () => {
                     onMouseEnter={hoverOn}
                     onMouseLeave={hoverOff}
                   >
-                    <Icon icon='tabler:brand-facebook' width={22} height={22} />
+                    <FaFacebook size={22} />
                   </motion.div>
                 </Link>
               )}
@@ -266,7 +269,7 @@ const Footer = () => {
                     onMouseEnter={hoverOn}
                     onMouseLeave={hoverOff}
                   >
-                    <Icon icon='tabler:brand-youtube-filled' width={22} height={22} />
+                    <FaYoutube size={22} />
                   </motion.div>
                 </Link>
               )}
@@ -282,7 +285,7 @@ const Footer = () => {
                     onMouseEnter={hoverOn}
                     onMouseLeave={hoverOff}
                   >
-                    <Icon icon='tabler:brand-telegram' width={22} height={22} />
+                    <Send size={22} />
                   </motion.div>
                 </Link>
               )}
@@ -353,7 +356,7 @@ const Footer = () => {
                     className='p-1.5 rounded-lg shrink-0 mt-0.5'
                     style={{ backgroundColor: `color-mix(in srgb, ${primaryColor} 10%, transparent)` }}
                   >
-                    <Icon icon='tabler:map-pin' width={16} height={16} style={{ color: primaryColor }} />
+                    <MapPin size={16} style={{ color: primaryColor }} />
                   </div>
                   <p className='text-sm text-darkblue/70 dark:text-white/70 leading-relaxed'>
                     {institucion.institucion_direccion}
@@ -367,7 +370,7 @@ const Footer = () => {
                     className='p-1.5 rounded-lg shrink-0'
                     style={{ backgroundColor: `color-mix(in srgb, ${primaryColor} 10%, transparent)` }}
                   >
-                    <Icon icon='tabler:phone' width={16} height={16} style={{ color: primaryColor }} />
+                    <Phone size={16}  style={{ color: primaryColor }} />
                   </div>
                   <Link
                     href={`tel:${institucion.institucion_celular1}`}
@@ -386,7 +389,7 @@ const Footer = () => {
                     className='p-1.5 rounded-lg shrink-0'
                     style={{ backgroundColor: `color-mix(in srgb, ${primaryColor} 10%, transparent)` }}
                   >
-                    <Icon icon='tabler:phone' width={16} height={16} style={{ color: primaryColor }} />
+                    <Phone size={16} style={{ color: primaryColor }} />
                   </div>
                   <Link
                     href={`tel:${institucion.institucion_celular2}`}
@@ -405,7 +408,7 @@ const Footer = () => {
                     className='p-1.5 rounded-lg shrink-0'
                     style={{ backgroundColor: `color-mix(in srgb, ${primaryColor} 10%, transparent)` }}
                   >
-                    <Icon icon='tabler:mail' width={16} height={16} style={{ color: primaryColor }} />
+                    <Mail size={16} style={{ color: primaryColor }} />
                   </div>
                   <Link
                     href={`mailto:${institucion.institucion_correo1}`}
@@ -424,7 +427,7 @@ const Footer = () => {
                     className='p-1.5 rounded-lg shrink-0'
                     style={{ backgroundColor: `color-mix(in srgb, ${primaryColor} 10%, transparent)` }}
                   >
-                    <Icon icon='tabler:mail' width={16} height={16} style={{ color: primaryColor }} />
+                    <Mail size={16} style={{ color: primaryColor }} />
                   </div>
                   <Link
                     href={`mailto:${institucion.institucion_correo2}`}

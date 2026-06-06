@@ -549,7 +549,7 @@ useEffect(() => {
                 {/* Botones */}
                 <motion.div variants={fadeUpVariant} className='flex flex-wrap items-center gap-4'>
 
-                  <ActionButton href='/publicaciones' variant='primary'>
+                  <ActionButton href='/about' variant='primary'>
                     <Image
                       src='/images/banner/estrellas.svg'
                       alt=''
@@ -559,7 +559,7 @@ useEffect(() => {
                     Explorar
                   </ActionButton>
 
-                  <ActionButton href='/about' variant='secondary'>
+                  <ActionButton href='/publicaciones' variant='secondary'>
                     <Image
                       src='/images/banner/megafono.svg'
                       alt=''
