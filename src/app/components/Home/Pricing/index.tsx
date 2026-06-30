@@ -234,8 +234,7 @@ const Pricing = () => {
               viewport={{ once: true }}
               className={`leading-relaxed text-sm sm:text-base max-w-lg ${isDark ? 'text-gray-300' : 'text-gray-600'}`}
             >
-              Conoce nuestra propuesta educativa, nuestra misión y el compromiso
-              con el medio ambiente y el desarrollo sostenible de Bolivia.
+               Carrera de Sociología de la Universidad Pública de El Alto (UPEA) nuestro lema es: "¡¡¡...Un fusil y autonomía, adelante Sociología...!!!"
             </motion.p>
 
 

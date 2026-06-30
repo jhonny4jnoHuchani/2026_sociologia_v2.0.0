@@ -2,12 +2,22 @@
 const nextConfig = {
   poweredByHeader: false,
 
- images: {
+  images: {
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'archivosminio.upea.bo',
         pathname: '/archivospaginasnode/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'img.youtube.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.ytimg.com',
+        pathname: '/**',
       },
     ],
     minimumCacheTTL: 60 * 60 * 24, 
@@ -30,19 +40,19 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'",
 
               // Imágenes
-              "img-src 'self' data: blob: https://archivosminio.upea.bo https://img.youtube.com https://i.ytimg.com",
+              "img-src 'self' data: blob: https://archivosminio.upea.bo https://img.youtube.com https://i.ytimg.com https://*.tile.openstreetmap.org",
 
               // Fuentes
               "font-src 'self'",
 
-              // Peticiones fetch/axios — API backend + Nominatim + Iconify
-              "connect-src 'self' https://apiadministrador.upea.bo https://nominatim.openstreetmap.org https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com",
+              // Peticiones fetch/axios — API backend + Nominatim + Iconify + OSM tiles + PDFs
+              "connect-src 'self' https://apiadministrador.upea.bo https://nominatim.openstreetmap.org https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com https://*.tile.openstreetmap.org https://archivosminio.upea.bo",
 
-              // Iframes
-              "frame-src 'self' https://www.openstreetmap.org https://www.google.com https://www.youtube.com https://www.youtube-nocookie.com",
+              // Iframes - OpenStreetMap, Google Maps, YouTube + PDFs de gacetas
+              "frame-src 'self' https://www.openstreetmap.org https://www.google.com https://www.youtube.com https://www.youtube-nocookie.com https://archivosminio.upea.bo",
 
-              // Tiles de Leaflet
-              "worker-src blob:",
+              // Workers
+              "worker-src blob: 'self'",
 
               // Anti-Clickjacking
               "frame-ancestors 'none'",

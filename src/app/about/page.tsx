@@ -362,7 +362,7 @@ export default function AboutPage() {
                         transition={{ delay: 0.8, duration: 0.6 }}
                       />
                     </span>{' '}
-                    con propósito ambiental
+                  
                   </h1>
                 </SectionIn>
                 <SectionIn delay={0.2} yOffset={20}>
