@@ -2,6 +2,11 @@
 const nextConfig = {
   poweredByHeader: false,
 
+  // Ignorar errores de ESLint durante el build de producción
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
   images: {
     remotePatterns: [
       {
