@@ -475,6 +475,18 @@ const Footer = () => {
             JhonnyAH
           </Link>
           <span className='opacity-40'>·</span>
+          <span>Suport by</span>
+          <Link
+            href='https://www.linkedin.com/in/albieri-laura-308686397/'
+            target='_blank'
+            rel='noreferrer'
+            className='duration-300 font-semibold hover:opacity-100'
+            onMouseEnter={hoverOn}
+            onMouseLeave={hoverOff}
+          >
+            Albiery
+          </Link>
+          <span className='opacity-40'>·</span>
           Todos los Derechos Reservados
         </p>
       </div>
